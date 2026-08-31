@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block titulo %}{{ ticket.codigo }} — Panel CTIC FIIS UNAC{% endblock %}
+{% block contenido %}
+<p><a href="/panel/tickets">« Volver al listado</a></p>
+{% include "_detalle.html" %}
+{% endblock %}

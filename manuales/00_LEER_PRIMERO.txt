@@ -1,0 +1,22 @@
+﻿ENTREGA CHATBOT FIIS - EJECUCION LOCAL SIN DOCKER
+
+Lea primero:
+  01_INSTALACION_LOCAL_WINDOWS.md
+
+El codigo fuente completo esta en:
+  codigo_fuente\
+
+Inicio rapido:
+  1. Tener Python 3.12, uv y MySQL 8 local.
+  2. Crear las bases chatbot_db y tickets_db y los usuarios locales.
+  3. Ejecutar uv sync en services\ticket-service y services\chatbot-api.
+  4. Aplicar las migraciones de ambos servicios.
+  5. Ejecutar app.scripts.cargar_kb en chatbot-api.
+  6. Levantar ticket-service :8001, chatbot-api :8000 y widget :8089.
+  7. Abrir http://127.0.0.1:8089/demo.html
+
+Panel:
+  http://127.0.0.1:8001/panel
+  admin@ctic.local / la contrasena configurada en SEED_ADMIN_PASSWORD
+
+No se incluye .env real ni claves secretas.

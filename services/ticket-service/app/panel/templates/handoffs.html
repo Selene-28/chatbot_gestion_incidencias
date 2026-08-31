@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block titulo %}Handoffs — Panel CTIC FIIS UNAC{% endblock %}
+{% block contenido %}
+<h1>Handoffs — atención en vivo</h1>
+
+{# Aviso de errores (409 «ya atendido por otro», red, etc.). #}
+<div id="aviso" class="alerta error oculto" role="alert"></div>
+
+{# ---------------- Vista: cola de handoffs pendientes ---------------- #}
+<section id="vista-cola">
+  <div class="barra-acciones">
+    <label>Estado
+      <select id="filtro-estado">
+        <option value="pendiente" selected>Pendientes</option>
+        <option value="atendido">Atendidos</option>
+        <option value="todos">Todos</option>
+      </select>
+    </label>
+    <button type="button" id="btn-refrescar">Refrescar</button>
+    <span class="meta" id="cola-info"></span>
+  </div>
+  <div id="cola" class="cuadricula">
+    <p class="vacio">Cargando cola de handoffs…</p>
+  </div>
+</section>
+
+{# ---------------- Vista: chat con el usuario ---------------- #}
+<section id="vista-chat" class="oculto">
+  <div class="barra-acciones">
+    <button type="button" id="btn-volver">« Volver a la cola</button>
+    <strong id="chat-titulo"></strong>
+    <span class="meta" id="chat-meta"></span>
+    <button type="button" id="btn-cerrar" style="margin-left:auto">Cerrar atención</button>
+  </div>
+  <div id="chat" class="chat-caja" aria-live="polite"></div>
+  <form id="form-envio" class="fila-envio">
+    <input id="texto" type="text" autocomplete="off" placeholder="Escribe un mensaje al usuario…" required>
+    <button type="submit">Enviar</button>
+  </form>
+</section>
+
+<script>
+(() => {
+  "use strict";
+  // Endpoints de chatbot-api (same-origin; la cookie panel_token viaja sola).
+  const API_HANDOFFS = "/api/chat/handoffs";
+
+  const $ = (id) => document.getElementById(id);
+  const aviso = $("aviso");
+
+  function mostrarAviso(msg) {
+    aviso.textContent = msg;          // textContent: nunca innerHTML con datos del servidor
+    aviso.classList.remove("oculto");
+  }
+  function limpiarAviso() { aviso.classList.add("oculto"); aviso.textContent = ""; }
+
+  // Cliente HTTP: envelope estándar {success,code,message,data}. Devuelve data o lanza.
+  async function api(metodo, url, cuerpo) {
+    const opciones = { method: metodo, credentials: "same-origin", headers: {} };
+    if (cuerpo !== undefined) {
+      opciones.headers["Content-Type"] = "application/json";
+      opciones.body = JSON.stringify(cuerpo);
+    }
+    let resp;
+    try {
+      resp = await fetch(url, opciones);
+    } catch (e) {
+      const err = new Error("No se pudo contactar el servidor.");
+      err.status = 0;
+      throw err;
+    }
+    if (resp.status === 401) { window.location.href = "/panel/login"; throw new Error("Sesión expirada."); }
+    let json = {};
+    try { json = await resp.json(); } catch (e) { /* respuesta sin cuerpo */ }
+    if (!resp.ok || json.success === false) {
+      const err = new Error(json.message || ("Error " + resp.status));
+      err.status = resp.status;
+      throw err;
+    }
+    return json.data;
+  }
+
+  function fmtHora(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return isNaN(d) ? String(iso) : d.toLocaleString("es-PE");
+  }
+
+  // ---------------- Cola ----------------
+  let colaTimer = null;
+
+  async function cargarCola() {
+    const estado = $("filtro-estado").value;
+    let data;
+    try {
+      data = await api("GET", API_HANDOFFS + "?estado=" + encodeURIComponent(estado));
+    } catch (e) {
+      mostrarAviso("No se pudo cargar la cola: " + e.message);
+      return;
+    }
+    limpiarAviso();
+    const items = (data && data.items) || [];
+    const cont = $("cola");
+    cont.textContent = "";
+    $("cola-info").textContent = (data && data.total != null ? data.total : items.length) + " handoff(s)";
+    if (items.length === 0) {
+      const p = document.createElement("p");
+      p.className = "vacio";
+      p.textContent = "No hay handoffs en este estado.";
+      cont.appendChild(p);
+      return;
+    }
+    for (const h of items) {
+      cont.appendChild(tarjetaHandoff(h));
+    }
+  }
+
+  function tarjetaHandoff(h) {
+    const card = document.createElement("div");
+    card.className = "tarjeta";
+    const t = document.createElement("h3");
+    t.textContent = h.motivo || "Solicitud de soporte";
+    card.appendChild(t);
+    const usuario = document.createElement("p");
+    usuario.className = "meta";
+    usuario.textContent = (h.usuarioNombre || "Usuario") + " · " + (h.usuarioCorreo || "sin correo");
+    card.appendChild(usuario);
+    const hora = document.createElement("p");
+    hora.className = "meta";
+    hora.textContent = "Solicitado: " + fmtHora(h.solicitadoAt);
+    card.appendChild(hora);
+    const estado = document.createElement("p");
+    estado.className = "meta";
+    estado.textContent = "Estado: " + (h.estado || "");
+    card.appendChild(estado);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = h.estado === "atendido" ? "Continuar" : "Atender";
+    btn.addEventListener("click", () => atender(h));
+    card.appendChild(btn);
+    return card;
+  }
+
+  async function atender(h) {
+    limpiarAviso();
+    if (h.estado !== "atendido") {
+      try {
+        await api("POST", API_HANDOFFS + "/" + encodeURIComponent(h.id) + "/atender");
+      } catch (e) {
+        if (e.status === 409) {
+          mostrarAviso("Este handoff ya fue atendido por otro agente.");
+          cargarCola();
+          return;
+        }
+        mostrarAviso("No se pudo atender: " + e.message);
+        return;
+      }
+    }
+    abrirChat(h);
+  }
+
+  // ---------------- Chat ----------------
+  let chatTimer = null;
+  let handoffActual = null;
+  let ultimoId = 0;
+
+  function abrirChat(h) {
+    detenerCola();
+    handoffActual = h;
+    ultimoId = 0;
+    $("chat").textContent = "";
+    $("chat-titulo").textContent = h.usuarioNombre || "Usuario";
+    $("chat-meta").textContent = (h.usuarioCorreo || "") + (h.motivo ? " · " + h.motivo : "");
+    $("vista-cola").classList.add("oculto");
+    $("vista-chat").classList.remove("oculto");
+    // Pinta el contexto (últimos mensajes) que trae la cola.
+    for (const m of (h.ultimosMensajes || [])) pintarMensaje(m);
+    $("texto").focus();
+    sondearMensajes();
+    chatTimer = setInterval(sondearMensajes, 2000);
+  }
+
+  function volverCola() {
+    detenerChat();
+    handoffActual = null;
+    $("vista-chat").classList.add("oculto");
+    $("vista-cola").classList.remove("oculto");
+    cargarCola();
+    iniciarCola();
+  }
+
+  function pintarMensaje(m) {
+    const emisor = (m.emisor || "sistema").toLowerCase();
+    const clase = emisor === "agente" ? "agente" : (emisor === "usuario" ? "usuario" : "sistema");
+    const b = document.createElement("div");
+    b.className = "burbuja " + clase;
+    const autor = document.createElement("span");
+    autor.className = "autor";
+    autor.textContent = emisor + " · " + fmtHora(m.fecha);
+    b.appendChild(autor);
+    const cuerpo = document.createElement("span");
+    cuerpo.textContent = m.contenido || "";   // escape estricto
+    b.appendChild(cuerpo);
+    const caja = $("chat");
+    caja.appendChild(b);
+    caja.scrollTop = caja.scrollHeight;
+    if (m.id && m.id > ultimoId) ultimoId = m.id;
+  }
+
+  async function sondearMensajes() {
+    if (!handoffActual) return;
+    let data;
+    try {
+      data = await api(
+        "GET",
+        API_HANDOFFS + "/" + encodeURIComponent(handoffActual.id) + "/mensajes?desde=" + ultimoId
+      );
+    } catch (e) {
+      mostrarAviso("Error al obtener mensajes: " + e.message);
+      return;
+    }
+    for (const m of ((data && data.items) || [])) pintarMensaje(m);
+    if (data && data.ultimoId && data.ultimoId > ultimoId) ultimoId = data.ultimoId;
+  }
+
+  async function enviar(ev) {
+    ev.preventDefault();
+    if (!handoffActual) return;
+    const input = $("texto");
+    const texto = input.value.trim();
+    if (!texto) return;
+    input.disabled = true;
+    try {
+      await api("POST", API_HANDOFFS + "/" + encodeURIComponent(handoffActual.id) + "/mensajes", { texto });
+      input.value = "";
+      pintarMensaje({ emisor: "agente", contenido: texto, fecha: new Date().toISOString() });
+    } catch (e) {
+      mostrarAviso("No se pudo enviar el mensaje: " + e.message);
+    } finally {
+      input.disabled = false;
+      input.focus();
+    }
+  }
+
+  async function cerrarAtencion() {
+    if (!handoffActual) return;
+    if (!confirm("¿Cerrar la atención? El bot volverá a atender al usuario.")) return;
+    try {
+      await api("POST", API_HANDOFFS + "/" + encodeURIComponent(handoffActual.id) + "/cerrar");
+    } catch (e) {
+      mostrarAviso("No se pudo cerrar: " + e.message);
+      return;
+    }
+    volverCola();
+  }
+
+  // ---------------- Temporizadores ----------------
+  function iniciarCola() { detenerCola(); colaTimer = setInterval(cargarCola, 5000); }
+  function detenerCola() { if (colaTimer) { clearInterval(colaTimer); colaTimer = null; } }
+  function detenerChat() { if (chatTimer) { clearInterval(chatTimer); chatTimer = null; } }
+
+  // ---------------- Enlaces de eventos ----------------
+  $("btn-refrescar").addEventListener("click", cargarCola);
+  $("filtro-estado").addEventListener("change", cargarCola);
+  $("btn-volver").addEventListener("click", volverCola);
+  $("btn-cerrar").addEventListener("click", cerrarAtencion);
+  $("form-envio").addEventListener("submit", enviar);
+
+  cargarCola();
+  iniciarCola();
+})();
+</script>
+{% endblock %}

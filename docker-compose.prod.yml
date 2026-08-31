@@ -1,0 +1,22 @@
+# Overlay de PRODUCCIÓN — habilita HTTPS/TLS (prd/07 §2, ADR-07).
+#
+# En producción NO se usa docker-compose.override.yml (es solo para desarrollo:
+# publica puertos internos y monta el código con hot-reload). Se arranca con:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Requisitos previos:
+#   1. Certificados TLS del subdominio (p. ej. chatbot.fiis.unac.edu.pe) en
+#      ./deploy/certs/  (fullchain.pem y privkey.pem) — institucional o Let's Encrypt.
+#   2. Activar el server :443 de nginx copiando el ejemplo:
+#      cp deploy/nginx/conf.d/tls.conf.example deploy/nginx/conf.d/tls.conf
+#      y ajustar server_name.
+#   3. ALLOWED_ORIGINS en .env con el origen público (https://fiis.unac.edu.pe).
+
+services:
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/certs:/etc/nginx/certs:ro

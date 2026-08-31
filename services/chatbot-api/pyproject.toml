@@ -1,0 +1,77 @@
+[project]
+name = "chatbot-api"
+version = "0.1.0"
+description = "API del chatbot de gestión de incidencias CTIC-FIIS UNAC (superficie conversacional)"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "asyncmy>=0.2.9,<0.3",
+    "cryptography>=42,<50",
+    "pymysql>=1.1,<2",
+    "alembic>=1.13,<2",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+    "httpx>=0.27,<1",
+    "python-multipart>=0.0.32",
+    # Validación del JWT del staff emitido por ticket-service (prd/04 §1)
+    "pyjwt>=2.8,<3",
+    # Stack RAG (Semana 4, prd/06)
+    "anthropic>=0.69,<1",
+    "chromadb>=1.0,<2",
+    "sentence-transformers>=3.3,<6",
+    # torch se declara directo para fijar sin ambigüedad el índice CPU-only
+    # (abajo). Es dependencia de sentence-transformers; sin esto, uv resolvía la
+    # rueda CUDA (~+cu130, imagen de ~9 GB) para Linux.
+    "torch>=2.2,<3",
+]
+
+# torch solo CPU (prd/06 §5: embeddings locales CPU-friendly; controla el tamaño
+# de la imagen Docker — el índice pytorch-cpu evita las ruedas CUDA de varios GB).
+# Sin marcador de plataforma: el índice pytorch-cpu publica ruedas para Linux y
+# macOS, por lo que aplica en build (Linux) y en desarrollo (macOS) por igual.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2,<9",
+    "pytest-asyncio>=0.24,<2",
+    "ruff>=0.6,<1",
+    "mypy>=1.11,<2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = [
+    "B008", # Depends() en defaults de parámetros es idiomático en FastAPI
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: requiere MySQL local (autoskip si no responde)",
+    "e2e: requiere ticket-service en localhost:8001 (autoskip si no responde)",
+    "rag: requiere el modelo de embeddings real (autoskip si sentence-transformers no importa)",
+    "llm: requiere ANTHROPIC_API_KEY real (autoskip sin key)",
+]

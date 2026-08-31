@@ -1,0 +1,43 @@
+# Solo desarrollo — docker compose lo carga automáticamente junto a docker-compose.yml.
+# Publica puertos, monta el código del host con hot-reload y agrega Adminer.
+#
+# Nota: se sobrescribe el `entrypoint` (no solo el `command`) porque el
+# entrypoint.sh de producción ejecuta un uvicorn fijo e ignora sus argumentos;
+# en dev queremos --reload y montar el código del host en el WORKDIR real de
+# cada imagen (chatbot-api: WORKDIR /srv/app → código en /srv/app/app;
+# ticket-service: WORKDIR /srv → código en /srv/app). Migraciones antes de arrancar.
+
+services:
+  chatbot-api:
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/chatbot-api/app:/srv/app/app
+      - ./services/chatbot-api/alembic:/srv/app/alembic
+    entrypoint: ["sh", "-c"]
+    command:
+      - "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  ticket-service:
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./services/ticket-service/app:/srv/app
+      - ./services/ticket-service/alembic:/srv/alembic
+    entrypoint: ["sh", "-c"]
+    command:
+      - "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"
+
+  mysql:
+    # inspección local con clientes MySQL del host
+    ports:
+      - "3306:3306"
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped

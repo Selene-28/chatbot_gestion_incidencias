@@ -1,0 +1,33 @@
+<!--
+====================================================================
+  ASISTENTE VIRTUAL CTIC (FIIS-UNAC) — SCRIPT PARA WORDPRESS
+====================================================================
+  DÓNDE PEGARLO:
+  - Plugin "Insert Headers and Footers" / Code Snippets → FOOTER
+  - O en functions.php del tema hijo (ver 02b_SCRIPT...php.txt)
+  - Debe cargarse en TODAS las páginas del sitio.
+
+  ANTES DE PUBLICAR:
+  1) Reemplace chatbot.fiis.unac.edu.pe por la URL REAL de su servidor.
+  2) En el servidor del chatbot, configure ALLOWED_ORIGINS con el
+     dominio WordPress de la FIIS (ej. https://fiis.unac.edu.pe).
+  3) Use siempre HTTPS en producción.
+====================================================================
+-->
+
+<!-- ===== PRODUCCIÓN (usar este en el sitio FIIS) ===== -->
+<script
+  src="https://chatbot.fiis.unac.edu.pe/widget/widget.js"
+  data-api="https://chatbot.fiis.unac.edu.pe/api"
+  defer>
+</script>
+
+<!--
+===== PRUEBA LOCAL (solo en su PC, NO en WordPress de producción) =====
+<script
+  src="http://127.0.0.1:5500/widget.js"
+  data-api="http://127.0.0.1:8000/api"
+  defer>
+</script>
+===== FIN PRUEBA LOCAL =====
+-->

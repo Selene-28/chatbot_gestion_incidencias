@@ -1,0 +1,42 @@
+[project]
+name = "chatbot-ctic-e2e"
+version = "0.1.0"
+description = "Suite E2E automatizada (GATE de release) — verifica QA-01..QA-11 del DRS contra el stack completo."
+requires-python = ">=3.12"
+dependencies = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.5",
+]
+
+[tool.pytest.ini_options]
+# Modo auto: las funciones y fixtures async se detectan sin decorar cada una.
+asyncio_mode = "auto"
+addopts = "-ra"
+testpaths = ["."]
+python_files = ["test_*.py"]
+markers = [
+    "qa01: QA-01 Registro de incidencias",
+    "qa02: QA-02 Consulta de estado",
+    "qa03: QA-03 Preguntas frecuentes (FAQ)",
+    "qa04: QA-04 Diagnóstico básico guiado",
+    "qa05: QA-05 Escalamiento",
+    "qa06: QA-06 Validación de datos",
+    "qa07: QA-07 Historial de conversaciones",
+    "qa08: QA-08 Seguridad",
+    "qa09: QA-09 Rendimiento (REN-01)",
+    "qa10: QA-10 Encuesta de satisfacción",
+    "qa11: QA-11 Flujo completo (happy paths)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión — Panel CTIC FIIS UNAC{% endblock %}
+{% block contenido %}
+<div class="tarjeta-login">
+  <h1>Panel de agentes</h1>
+  <p class="sub">Centro de Tecnologías de la Información y Comunicación — FIIS UNAC</p>
+  {% if error %}<div class="alerta error">{{ error }}</div>{% endif %}
+  {# POST clásico (sin htmx). CSRF mitigado por cookie SameSite=Lax. #}
+  <form method="post" action="/panel/login">
+    <label for="correo">Correo</label>
+    <input id="correo" name="correo" type="email" required autofocus
+           autocomplete="username" value="{{ correo or '' }}">
+    <label for="password">Contraseña</label>
+    <input id="password" name="password" type="password" required
+           autocomplete="current-password">
+    <button type="submit">Ingresar</button>
+  </form>
+</div>
+{% endblock %}

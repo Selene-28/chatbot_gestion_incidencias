@@ -1,0 +1,72 @@
+{
+  "_meta": {
+    "descripcion": "Set de prueba RAG (prd/06 §7): 32 preguntas de soporte con el artículo esperado de la base de conocimiento (los 16 artículos reales de app/scripts/datos_kb.py). Se mide recall@1 de la recuperación (¿el artículo esperado es la fuente principal devuelta en meta.fuentesKb?). El emparejamiento se hace por título exacto del artículo.",
+    "articulos_kb": [
+      "Recuperación de contraseña del correo institucional",
+      "Horario de atención y contacto del CTIC",
+      "Conexión a la red WiFi de la UNAC",
+      "Configurar el correo institucional en el celular",
+      "Acceso al Sistema de Gestión Académica (SGA)",
+      "Aula Virtual: no puedo iniciar sesión (caché y credenciales)",
+      "Aula Virtual: no aparecen mis cursos",
+      "Solicitud de cuenta y correo institucional para ingresantes",
+      "Office 365 educativo gratuito para la comunidad UNAC",
+      "Acceso a Turnitin para docentes y tesistas",
+      "MATLAB con licencia campus de la UNAC",
+      "Laboratorios de cómputo e impresoras de la FIIS",
+      "Videoconferencias institucionales (Google Meet y Zoom)",
+      "Cómo funcionan los tickets de soporte del CTIC",
+      "VPN institucional para acceso remoto",
+      "Cuenta bloqueada por intentos fallidos de inicio de sesión"
+    ]
+  },
+  "preguntas": [
+    {"pregunta": "Olvidé la contraseña de mi correo institucional, ¿cómo la recupero?", "articulo_esperado": "Recuperación de contraseña del correo institucional"},
+    {"pregunta": "¿Dónde reseteo la clave de mi correo @unac.edu.pe?", "articulo_esperado": "Recuperación de contraseña del correo institucional"},
+
+    {"pregunta": "¿Cuál es el horario de atención del CTIC?", "articulo_esperado": "Horario de atención y contacto del CTIC"},
+    {"pregunta": "¿Dónde queda la oficina del CTIC y cuál es su teléfono?", "articulo_esperado": "Horario de atención y contacto del CTIC"},
+
+    {"pregunta": "¿Cómo me conecto al WiFi del campus de la UNAC?", "articulo_esperado": "Conexión a la red WiFi de la UNAC"},
+    {"pregunta": "Me conecto a la red pero no tengo internet, ¿qué hago?", "articulo_esperado": "Conexión a la red WiFi de la UNAC"},
+
+    {"pregunta": "¿Cómo configuro mi correo institucional en mi celular?", "articulo_esperado": "Configurar el correo institucional en el celular"},
+    {"pregunta": "Quiero leer mi correo @unac.edu.pe desde el Outlook del teléfono", "articulo_esperado": "Configurar el correo institucional en el celular"},
+
+    {"pregunta": "¿Cómo ingreso al SGA para ver mis notas?", "articulo_esperado": "Acceso al Sistema de Gestión Académica (SGA)"},
+    {"pregunta": "No puedo entrar al Sistema de Gestión Académica, ¿cómo recupero mi acceso?", "articulo_esperado": "Acceso al Sistema de Gestión Académica (SGA)"},
+
+    {"pregunta": "El aula virtual me dice usuario o contraseña no válidos, ¿qué hago?", "articulo_esperado": "Aula Virtual: no puedo iniciar sesión (caché y credenciales)"},
+    {"pregunta": "Moodle se queda cargando y no me deja iniciar sesión", "articulo_esperado": "Aula Virtual: no puedo iniciar sesión (caché y credenciales)"},
+
+    {"pregunta": "Puedo entrar al aula virtual pero no me aparecen mis cursos", "articulo_esperado": "Aula Virtual: no aparecen mis cursos"},
+    {"pregunta": "Me matriculé pero un curso no figura en Moodle", "articulo_esperado": "Aula Virtual: no aparecen mis cursos"},
+
+    {"pregunta": "Soy ingresante, ¿cómo obtengo mi cuenta y correo institucional?", "articulo_esperado": "Solicitud de cuenta y correo institucional para ingresantes"},
+    {"pregunta": "¿Cuánto demora la creación de mi correo institucional de nuevo estudiante?", "articulo_esperado": "Solicitud de cuenta y correo institucional para ingresantes"},
+
+    {"pregunta": "¿Cómo instalo Office 365 gratis con mi cuenta de la universidad?", "articulo_esperado": "Office 365 educativo gratuito para la comunidad UNAC"},
+    {"pregunta": "¿Tengo derecho a Word y Excel gratis siendo estudiante de la UNAC?", "articulo_esperado": "Office 365 educativo gratuito para la comunidad UNAC"},
+
+    {"pregunta": "¿Cómo consigo acceso a Turnitin para revisar mi tesis?", "articulo_esperado": "Acceso a Turnitin para docentes y tesistas"},
+    {"pregunta": "Soy docente y necesito una cuenta de Turnitin, ¿cómo la solicito?", "articulo_esperado": "Acceso a Turnitin para docentes y tesistas"},
+
+    {"pregunta": "¿Cómo instalo MATLAB con la licencia de la universidad?", "articulo_esperado": "MATLAB con licencia campus de la UNAC"},
+    {"pregunta": "¿La UNAC tiene licencia de MATLAB y Simulink para estudiantes?", "articulo_esperado": "MATLAB con licencia campus de la UNAC"},
+
+    {"pregunta": "¿En qué horario puedo usar los laboratorios de cómputo de la FIIS?", "articulo_esperado": "Laboratorios de cómputo e impresoras de la FIIS"},
+    {"pregunta": "¿Cómo imprimo mis trabajos en el laboratorio de la facultad?", "articulo_esperado": "Laboratorios de cómputo e impresoras de la FIIS"},
+
+    {"pregunta": "¿Cómo solicito una sala de Zoom institucional para mi sustentación?", "articulo_esperado": "Videoconferencias institucionales (Google Meet y Zoom)"},
+    {"pregunta": "¿Puedo usar Google Meet con mi cuenta institucional sin límite de tiempo?", "articulo_esperado": "Videoconferencias institucionales (Google Meet y Zoom)"},
+
+    {"pregunta": "¿Cómo funciona el ciclo de un ticket de soporte del CTIC?", "articulo_esperado": "Cómo funcionan los tickets de soporte del CTIC"},
+    {"pregunta": "¿Qué formato tiene el número de ticket y cuánto tarda la primera respuesta?", "articulo_esperado": "Cómo funcionan los tickets de soporte del CTIC"},
+
+    {"pregunta": "¿Cómo solicito la VPN institucional para acceso remoto?", "articulo_esperado": "VPN institucional para acceso remoto"},
+    {"pregunta": "Necesito FortiClient para entrar a las bases de datos de la biblioteca desde casa", "articulo_esperado": "VPN institucional para acceso remoto"},
+
+    {"pregunta": "Mi cuenta se bloqueó por intentos fallidos, ¿cómo la desbloqueo?", "articulo_esperado": "Cuenta bloqueada por intentos fallidos de inicio de sesión"},
+    {"pregunta": "¿Cuánto tiempo debo esperar si bloquearon mi cuenta por poner mal la contraseña?", "articulo_esperado": "Cuenta bloqueada por intentos fallidos de inicio de sesión"}
+  ]
+}

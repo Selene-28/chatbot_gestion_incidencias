@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block titulo %}Métricas — Panel CTIC FIIS UNAC{% endblock %}
+{% block contenido %}
+<h1>Dashboard de métricas</h1>
+
+<div id="aviso" class="alerta error oculto" role="alert"></div>
+
+<form id="form-rango" class="filtros">
+  <label>Desde <input type="date" id="desde" required></label>
+  <label>Hasta <input type="date" id="hasta" required></label>
+  <button type="submit">Consultar</button>
+</form>
+
+<div id="tarjetas" class="cuadricula">
+  <p class="vacio">Cargando métricas…</p>
+</div>
+
+<h2>Tickets por estado</h2>
+<table class="tabla" id="tabla-tickets-estado">
+  <thead><tr><th>Estado</th><th>Cantidad</th></tr></thead>
+  <tbody id="cuerpo-estados"></tbody>
+</table>
+
+<h2>Intents más frecuentes</h2>
+<div id="intents"></div>
+
+<script>
+(() => {
+  "use strict";
+  const API_RESUMEN = "/api/metricas/resumen";
+
+  const $ = (id) => document.getElementById(id);
+  const aviso = $("aviso");
+
+  function mostrarAviso(msg) { aviso.textContent = msg; aviso.classList.remove("oculto"); }
+  function limpiarAviso() { aviso.classList.add("oculto"); aviso.textContent = ""; }
+
+  async function api(url) {
+    let resp;
+    try { resp = await fetch(url, { credentials: "same-origin" }); }
+    catch (e) { throw new Error("No se pudo contactar el servidor."); }
+    if (resp.status === 401) { window.location.href = "/panel/login"; throw new Error("Sesión expirada."); }
+    if (resp.status === 403) throw new Error("Solo administradores.");
+    let json = {};
+    try { json = await resp.json(); } catch (e) { /* sin cuerpo */ }
+    if (!resp.ok || json.success === false) throw new Error(json.message || ("Error " + resp.status));
+    return json.data;
+  }
+
+  function iso(d) { return d.toISOString().slice(0, 10); }
+
+  function tarjeta(valor, rotulo) {
+    const div = document.createElement("div");
+    div.className = "tarjeta kpi";
+    const v = document.createElement("div");
+    v.className = "valor"; v.textContent = valor;
+    const r = document.createElement("div");
+    r.className = "rotulo"; r.textContent = rotulo;
+    div.appendChild(v); div.appendChild(r);
+    return div;
+  }
+
+  function pct(x) { return x == null ? "—" : (Math.round(x * 1000) / 10) + " %"; }
+  function num(x) { return x == null ? "—" : String(x); }
+  function estrellas(x) { return x == null ? "—" : (Math.round(x * 10) / 10) + " ★"; }
+
+  function pintar(data) {
+    const cont = $("tarjetas");
+    cont.textContent = "";
+    cont.appendChild(tarjeta(num(data.conversaciones), "Conversaciones"));
+    cont.appendChild(tarjeta(num(data.mensajes), "Mensajes"));
+    cont.appendChild(tarjeta(pct(data.tasaAutoservicio), "Tasa de autoservicio"));
+    cont.appendChild(tarjeta(num(data.latenciaPromMs) + " ms", "Latencia promedio"));
+    cont.appendChild(tarjeta(estrellas(data.calificacionProm), "Calificación promedio"));
+    cont.appendChild(tarjeta(num(data.encuestas), "Encuestas"));
+    cont.appendChild(tarjeta(num(data.tokensLlm), "Tokens LLM"));
+
+    // Tickets por estado
+    const tbody = $("cuerpo-estados");
+    tbody.textContent = "";
+    const porEstado = data.ticketsPorEstado || {};
+    const claves = Object.keys(porEstado);
+    if (claves.length === 0) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 2; td.className = "vacio"; td.textContent = "Sin datos.";
+      tr.appendChild(td); tbody.appendChild(tr);
+    }
+    for (const estado of claves) {
+      const tr = document.createElement("tr");
+      const tdE = document.createElement("td");
+      const badge = document.createElement("span");
+      badge.className = "badge estado-" + estado.toLowerCase().replace(/ /g, "-");
+      badge.textContent = estado;
+      tdE.appendChild(badge);
+      const tdC = document.createElement("td");
+      tdC.textContent = num(porEstado[estado]);
+      tr.appendChild(tdE); tr.appendChild(tdC);
+      tbody.appendChild(tr);
+    }
+
+    // Intents (barras con ancho proporcional, CSS puro)
+    const cInt = $("intents");
+    cInt.textContent = "";
+    const intents = data.intentsTop || [];
+    if (intents.length === 0) {
+      const p = document.createElement("p");
+      p.className = "vacio"; p.textContent = "Sin datos de intents.";
+      cInt.appendChild(p);
+    } else {
+      const max = Math.max.apply(null, intents.map((i) => i.total || 0)) || 1;
+      for (const i of intents) {
+        const fila = document.createElement("div");
+        fila.style.display = "grid";
+        fila.style.gridTemplateColumns = "12rem 1fr 3rem";
+        fila.style.alignItems = "center";
+        fila.style.gap = "0.6rem";
+        fila.style.margin = "0.3rem 0";
+        const etq = document.createElement("span");
+        etq.textContent = i.intent || "";
+        const cajaBarra = document.createElement("div");
+        const barra = document.createElement("div");
+        barra.className = "barra-intent";
+        barra.style.width = Math.round(((i.total || 0) / max) * 100) + "%";
+        cajaBarra.appendChild(barra);
+        const val = document.createElement("span");
+        val.style.textAlign = "right";
+        val.textContent = num(i.total);
+        fila.appendChild(etq); fila.appendChild(cajaBarra); fila.appendChild(val);
+        cInt.appendChild(fila);
+      }
+    }
+  }
+
+  async function consultar(ev) {
+    if (ev) ev.preventDefault();
+    const params = new URLSearchParams({ desde: $("desde").value, hasta: $("hasta").value });
+    let data;
+    try { data = await api(API_RESUMEN + "?" + params.toString()); }
+    catch (e) { mostrarAviso("No se pudieron cargar las métricas: " + e.message); return; }
+    limpiarAviso();
+    pintar(data);
+  }
+
+  // Rango por defecto: últimos 30 días.
+  const hoy = new Date();
+  const hace30 = new Date();
+  hace30.setDate(hoy.getDate() - 30);
+  $("hasta").value = iso(hoy);
+  $("desde").value = iso(hace30);
+
+  $("form-rango").addEventListener("submit", consultar);
+  consultar();
+})();
+</script>
+{% endblock %}

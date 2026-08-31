@@ -1,0 +1,69 @@
+{# Fragmento htmx: detalle completo del ticket. Los formularios lo reemplazan
+   (hx-swap="outerHTML" sobre #detalle) tras cada acción.
+   CSRF: los POST dependen de la cookie SameSite=Lax; un sitio externo no
+   puede adjuntarla en peticiones cross-site (prd/02 §7). #}
+<div id="detalle">
+  {% if error %}<div class="alerta error">{{ error }}</div>{% endif %}
+  {% if mensaje %}<div class="alerta exito">{{ mensaje }}</div>{% endif %}
+
+  <h1>{{ ticket.codigo }}
+    <span class="badge estado-{{ ticket.estado|lower|replace(' ', '-') }}">{{ ticket.estado }}</span>
+  </h1>
+
+  <dl class="datos">
+    <dt>Solicitante</dt>
+    <dd>{{ ticket.usuario.nombre }} ({{ ticket.usuario.correo }})</dd>
+    <dt>Categoría</dt>
+    <dd>{{ ticket.categoria.nombre }}{% if ticket.subcategoria %} · {{ ticket.subcategoria }}{% endif %}</dd>
+    <dt>Prioridad</dt>
+    <dd>{{ ticket.prioridad }}</dd>
+    <dt>Técnico asignado</dt>
+    <dd>{{ ticket.tecnico.nombre if ticket.tecnico else 'Sin asignar' }}</dd>
+    <dt>Registrado</dt>
+    <dd>{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</dd>
+    <dt>Última actualización</dt>
+    <dd>{{ ticket.updated_at.strftime('%d/%m/%Y %H:%M') }}</dd>
+    <dt>Descripción</dt>
+    <dd>{{ ticket.descripcion }}</dd>
+  </dl>
+
+  <section class="acciones">
+    <form hx-post="/panel/tickets/{{ ticket.codigo }}/estado"
+          hx-target="#detalle" hx-swap="outerHTML">
+      <h2>Cambiar estado</h2>
+      {% if transiciones %}
+        {# Solo transiciones válidas (RN-02) desde el estado actual. #}
+        <p>
+          <select name="estado" required>
+            {% for e in transiciones %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+          </select>
+        </p>
+        <p><textarea name="comentario" maxlength="500"
+                     placeholder="Comentario (opcional)"></textarea></p>
+        <button type="submit">Aplicar cambio</button>
+      {% else %}
+        <p class="vacio">El ticket está «{{ ticket.estado }}» y no admite más transiciones.</p>
+      {% endif %}
+    </form>
+
+    <form hx-post="/panel/tickets/{{ ticket.codigo }}/asignar"
+          hx-target="#detalle" hx-swap="outerHTML">
+      <h2>Asignar técnico</h2>
+      <p>
+        <select name="tecnico_id" required>
+          <option value="">Seleccione un técnico…</option>
+          {% for t in tecnicos %}
+            <option value="{{ t.id }}"
+              {% if ticket.tecnico and ticket.tecnico.id == t.id %}selected{% endif %}>
+              {{ t.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </p>
+      <button type="submit">Asignar</button>
+    </form>
+  </section>
+
+  <h2>Historial</h2>
+  {% include "_historial.html" %}
+</div>

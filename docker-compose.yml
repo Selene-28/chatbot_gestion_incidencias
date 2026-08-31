@@ -1,0 +1,94 @@
+name: chatbot-ctic
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      # producción: montar certs y habilitar
+      # - "443:443"
+    volumes:
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./deploy/nginx/html/maintenance.html:/usr/share/nginx/html/maintenance.html:ro
+      - ./widget/public:/usr/share/nginx/html/widget:ro
+      # producción: montar certs y habilitar
+      # - certs:/etc/nginx/certs:ro
+    depends_on:
+      chatbot-api:
+        condition: service_healthy
+      ticket-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chatbot-api:
+    build: ./services/chatbot-api
+    env_file: .env
+    environment:
+      DB_URL: mysql+asyncmy://chatbot:${DB_CHATBOT_PASSWORD}@mysql:3306/chatbot_db
+      TICKETS_API_BASE_URL: http://ticket-service:8001 # ← en prod real: URL del sistema CTIC
+      TICKETS_API_KEY: ${TICKETS_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-claude-opus-4-8}
+      LLM_MODEL_ROUTER: ${LLM_MODEL_ROUTER:-claude-haiku-4-5}
+      CHROMA_DIR: /data/chroma
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      TZ: ${TZ:-America/Lima}
+    volumes:
+      - chroma_data:/data/chroma
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      # sin curl: las imágenes finales (python-slim) no lo incluyen
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  ticket-service:
+    build: ./services/ticket-service
+    env_file: .env
+    environment:
+      DB_URL: mysql+asyncmy://tickets:${DB_TICKETS_PASSWORD}@mysql:3306/tickets_db
+      TICKETS_API_KEY: ${TICKETS_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      UPLOADS_DIR: /data/uploads
+      TZ: ${TZ:-America/Lima}
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      # sin curl: las imágenes finales (python-slim) no lo incluyen
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/healthz', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      # las usa db/init/01-init.sh para crear los usuarios por servicio
+      DB_CHATBOT_PASSWORD: ${DB_CHATBOT_PASSWORD}
+      DB_TICKETS_PASSWORD: ${DB_TICKETS_PASSWORD}
+      TZ: ${TZ:-America/Lima}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro # crea esquemas y usuarios por-servicio
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  chroma_data:
+  uploads:
+  # producción: volumen de certificados TLS
+  # certs:

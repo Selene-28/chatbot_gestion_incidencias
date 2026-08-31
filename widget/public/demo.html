@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Página de prueba — FIIS UNAC</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      color: #1f2937;
+      background: #f8fafc;
+      line-height: 1.6;
+    }
+    header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 1.25rem 2rem;
+    }
+    header h1 { margin: 0; font-size: 1.35rem; }
+    header p { margin: 0.25rem 0 0; color: #c8d6e8; font-size: 0.9rem; }
+    nav {
+      background: #16304e;
+      padding: 0.5rem 2rem;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    nav a { color: #dbe6f2; text-decoration: none; font-size: 0.9rem; }
+    nav a:hover { color: #e8a020; }
+    main { max-width: 52rem; margin: 0 auto; padding: 2rem; }
+    section { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; }
+    h2 { color: #1e3a5f; margin-top: 0; }
+    pre {
+      background: #16304e;
+      color: #dbe6f2;
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+    }
+    .aviso {
+      background: #fdf3df;
+      border-left: 4px solid #e8a020;
+      padding: 0.75rem 1rem;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.95rem;
+    }
+    footer {
+      background: #1e3a5f;
+      color: #c8d6e8;
+      text-align: center;
+      padding: 1.25rem 2rem;
+      font-size: 0.85rem;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Universidad Nacional del Callao</h1>
+    <p>Facultad de Ingeniería Industrial y de Sistemas — Centro de Tecnologías de Información y Comunicación (CTIC)</p>
+  </header>
+
+  <nav aria-label="Navegación de prueba">
+    <a href="#inicio">Inicio</a>
+    <a href="#servicios">Servicios TIC</a>
+    <a href="#proyecto">Proyecto de tesis</a>
+    <a href="#integracion">Integración del widget</a>
+  </nav>
+
+  <main>
+    <section id="inicio">
+      <h2>Página de prueba del widget</h2>
+      <p>
+        Esta página simula el sitio web institucional de la FIIS-UNAC y sirve para
+        validar la integración del <strong>Asistente Virtual del CTIC</strong>.
+        Haga clic en la burbuja 💬 de la esquina inferior derecha para iniciar una
+        conversación: puede registrar una incidencia, consultar el estado de un
+        ticket, revisar las preguntas frecuentes o contactar con el personal de soporte.
+        Si el bot no puede resolver la consulta, la conversación se transfiere a un
+        <strong>agente humano del CTIC</strong>, cuyas respuestas llegan al chat en
+        tiempo real.
+      </p>
+      <p class="aviso">
+        Entorno de pruebas — las incidencias registradas aquí no corresponden al
+        sistema de tickets de producción del CTIC.
+      </p>
+    </section>
+
+    <section id="servicios">
+      <h2>Servicios tecnológicos atendidos</h2>
+      <p>El asistente virtual brinda soporte de primer nivel sobre los servicios del CTIC:</p>
+      <ol>
+        <li>Correo institucional (@unac.edu.pe) y recuperación de contraseñas.</li>
+        <li>Conectividad WiFi e Internet en el campus.</li>
+        <li>Aula Virtual y plataformas académicas.</li>
+        <li>Software institucional y licencias.</li>
+        <li>Registro, consulta y escalamiento de incidencias técnicas.</li>
+      </ol>
+    </section>
+
+    <section id="proyecto">
+      <h2>Sobre el proyecto</h2>
+      <p>
+        Este chatbot forma parte del proyecto de tesis
+        <em>«Chatbot para la gestión de incidencias del CTIC de la FIIS — UNAC»</em>.
+        El sistema combina flujos conversacionales guiados con recuperación de
+        información sobre una base de conocimiento (RAG), registra las incidencias
+        en un servicio de tickets con contratos idénticos a los del sistema
+        institucional, y permite la transferencia de la conversación a un agente
+        humano cuando el bot no puede resolver la consulta.
+      </p>
+    </section>
+
+    <section id="integracion">
+      <h2>Cómo se integra en un sitio web</h2>
+      <p>Basta con agregar una línea antes de cerrar <code>&lt;/body&gt;</code>:</p>
+      <pre><code>&lt;script src="https://ctic.unac.edu.pe/widget/widget.js"
+        data-api="https://ctic.unac.edu.pe/api" defer&gt;&lt;/script&gt;</code></pre>
+      <p>
+        El atributo <code>data-api</code> indica la URL base de la API del chatbot.
+        El widget no requiere ninguna dependencia adicional y carga sus propios estilos.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    Universidad Nacional del Callao — Facultad de Ingeniería Industrial y de Sistemas ·
+    Página de demostración del Asistente Virtual del CTIC
+  </footer>
+
+  <!-- Widget del Asistente Virtual del CTIC -->
+  <script src="./widget.js" data-api="http://127.0.0.1:8000/api" defer></script>
+</body>
+</html>

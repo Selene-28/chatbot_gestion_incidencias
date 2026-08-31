@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Panel de agentes — CTIC FIIS UNAC{% endblock %}</title>
+  {# htmx desde CDN con SRI (hash verificado contra unpkg htmx.org@1.9.12) #}
+  <script src="https://unpkg.com/htmx.org@1.9.12"
+          integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
+          crossorigin="anonymous" defer></script>
+  <style>
+    :root {
+      --primario: #7a1f1f;      /* granate institucional UNAC */
+      --primario-osc: #5c1616;
+      --fondo: #f5f4f2;
+      --borde: #ddd6d0;
+      --texto: #2b2b2b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--fondo);
+      color: var(--texto);
+      font-size: 15px;
+    }
+    header.barra {
+      background: var(--primario);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1.2rem;
+    }
+    header.barra .marca { font-weight: 700; letter-spacing: 0.02em; }
+    header.barra nav a {
+      color: #fff;
+      text-decoration: none;
+      margin-left: 1rem;
+      opacity: 0.9;
+    }
+    header.barra nav a:hover { opacity: 1; text-decoration: underline; }
+    main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.05rem; margin-top: 1.5rem; }
+    a { color: var(--primario); }
+    table.tabla {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid var(--borde);
+    }
+    table.tabla th, table.tabla td {
+      padding: 0.5rem 0.65rem;
+      border-bottom: 1px solid var(--borde);
+      text-align: left;
+    }
+    table.tabla th { background: #efeae5; font-weight: 600; }
+    table.tabla tr:hover td { background: #faf7f4; }
+    td.vacio, p.vacio { color: #777; font-style: italic; }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: #e2e2e2;
+    }
+    .estado-registrado { background: #dbe7f6; color: #1d4e89; }
+    .estado-asignado   { background: #e8e0f5; color: #5b3a9b; }
+    .estado-en-proceso { background: #fdf0d3; color: #8a6100; }
+    .estado-escalado   { background: #fadbd8; color: #922b21; }
+    .estado-resuelto   { background: #d9f2e0; color: #1e7a3c; }
+    .estado-cerrado    { background: #e5e5e5; color: #555; }
+    form.filtros {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+      align-items: center;
+    }
+    select, input, textarea, button {
+      font: inherit;
+      padding: 0.4rem 0.55rem;
+      border: 1px solid var(--borde);
+      border-radius: 4px;
+      background: #fff;
+    }
+    textarea { width: 100%; min-height: 3.5rem; resize: vertical; }
+    button {
+      background: var(--primario);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      padding: 0.45rem 1rem;
+    }
+    button:hover { background: var(--primario-osc); }
+    .alerta {
+      padding: 0.6rem 0.9rem;
+      border-radius: 4px;
+      margin: 0.8rem 0;
+      border: 1px solid transparent;
+    }
+    .alerta.error { background: #fadbd8; border-color: #e6b0aa; color: #922b21; }
+    .alerta.exito { background: #d9f2e0; border-color: #a9dfbf; color: #1e7a3c; }
+    nav.paginacion {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 0.8rem;
+      font-size: 0.9rem;
+    }
+    nav.paginacion a { cursor: pointer; }
+    dl.datos {
+      display: grid;
+      grid-template-columns: 12rem 1fr;
+      gap: 0.35rem 1rem;
+      background: #fff;
+      border: 1px solid var(--borde);
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    dl.datos dt { font-weight: 600; color: #555; }
+    dl.datos dd { margin: 0; }
+    section.acciones {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      background: #fff;
+      border: 1px solid var(--borde);
+      padding: 1rem;
+    }
+    section.acciones form { flex: 1 1 18rem; }
+    section.acciones h2 { margin-top: 0; }
+    .tarjeta-login {
+      max-width: 24rem;
+      margin: 4rem auto;
+      background: #fff;
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+      padding: 1.5rem 2rem 2rem;
+    }
+    .tarjeta-login form { display: flex; flex-direction: column; gap: 0.5rem; }
+    .tarjeta-login label { margin-top: 0.5rem; font-weight: 600; }
+    .tarjeta-login p.sub { color: #666; font-size: 0.85rem; }
+
+    /* --- Handoffs, KB y métricas (semana 5) --- */
+    .cuadricula {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .tarjeta {
+      background: #fff;
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .tarjeta h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+    .tarjeta .meta { color: #666; font-size: 0.85rem; margin: 0.15rem 0; }
+    .kpi { text-align: center; }
+    .kpi .valor { font-size: 1.7rem; font-weight: 700; color: var(--primario); }
+    .kpi .rotulo { color: #666; font-size: 0.85rem; margin-top: 0.2rem; }
+    .barra-intent {
+      background: var(--primario);
+      height: 1rem;
+      border-radius: 3px;
+      min-width: 2px;
+    }
+    /* Chat de handoff */
+    .chat-caja {
+      background: #fff;
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+      height: 24rem;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .burbuja {
+      max-width: 75%;
+      padding: 0.5rem 0.75rem;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .burbuja .autor { display: block; font-size: 0.72rem; opacity: 0.75; margin-bottom: 0.15rem; }
+    .burbuja.usuario { align-self: flex-start; background: #eceae7; }
+    .burbuja.agente  { align-self: flex-end; background: #d9e9f6; color: #14405f; }
+    .burbuja.sistema { align-self: center; background: #fdf0d3; color: #8a6100; font-size: 0.85rem; }
+    .fila-envio { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+    .fila-envio input { flex: 1; }
+    .oculto { display: none !important; }
+    .barra-acciones { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin: 0.6rem 0; }
+    dialog.modal {
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+      padding: 1.2rem;
+      width: min(40rem, 92vw);
+    }
+    dialog.modal form { display: flex; flex-direction: column; gap: 0.5rem; }
+    dialog.modal label { font-weight: 600; margin-top: 0.3rem; }
+  </style>
+</head>
+<body>
+<header class="barra">
+  <span class="marca">CTIC · Panel de agentes</span>
+  <nav>
+    {% if staff %}
+      <a href="/panel/tickets">Tickets</a>
+      <a href="/panel/handoffs">Handoffs</a>
+      {% if staff.rol == 'admin' %}
+        <a href="/panel/kb">Base de conocimiento</a>
+        <a href="/panel/metricas">Métricas</a>
+      {% endif %}
+      <a href="/panel/logout">Cerrar sesión ({{ staff.nombre }})</a>
+    {% endif %}
+  </nav>
+</header>
+<main>
+  {% block contenido %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,25 @@
+[project]
+name = "evidencia"
+version = "0.1.0"
+description = "Instrumentos de evidencia para la tesis (Semana 6): prueba de carga y evaluadores de calidad del chatbot CTIC-FIIS UNAC"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Prueba de carga (tarea 6.2)
+    "locust>=2.31,<3",
+    # Cliente HTTP de los evaluadores (tarea 6.6)
+    "httpx>=0.27,<1",
+    # Exportación tabular a CSV (usado por exportar_metricas y para agregados)
+    "pandas>=2.2,<3",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.6,<1"]
+
+# Mismo estilo que services/chatbot-api (línea 100, py312, reglas E/F/I/W/UP/B)
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]

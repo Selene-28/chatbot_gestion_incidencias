@@ -1,0 +1,33 @@
+# Entornos y secretos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# uv
+uv.lock.bak
+
+# Node / widget (si se añade tooling en el futuro)
+node_modules/
+
+# Datos persistentes locales (si se corre algo fuera de Docker)
+*.sqlite3
+
+# Sistema operativo / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Uploads/artefactos generados en desarrollo
+uploads/
+chroma_data/

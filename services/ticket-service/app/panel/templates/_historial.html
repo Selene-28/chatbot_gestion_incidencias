@@ -1,0 +1,25 @@
+{# Fragmento: historial de cambios de estado del ticket (trazabilidad RN-02). #}
+<table class="tabla historial">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Estado anterior</th>
+      <th>Estado nuevo</th>
+      <th>Comentario</th>
+      <th>Actor</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for h in ticket.historial %}
+    <tr>
+      <td>{{ h.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+      <td>{{ h.estado_anterior or '—' }}</td>
+      <td><span class="badge estado-{{ h.estado_nuevo|lower|replace(' ', '-') }}">{{ h.estado_nuevo }}</span></td>
+      <td>{{ h.comentario or '' }}</td>
+      <td>{{ h.actor.nombre if h.actor else 'Sistema' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="vacio">Sin movimientos registrados.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

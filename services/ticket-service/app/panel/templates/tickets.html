@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titulo %}Tickets — Panel CTIC FIIS UNAC{% endblock %}
+{% block contenido %}
+<h1>Tickets de incidencias</h1>
+
+{# Filtros vía htmx: cada cambio recarga solo la tabla (#tabla-tickets). #}
+<form class="filtros"
+      hx-get="/panel/tickets"
+      hx-target="#tabla-tickets"
+      hx-swap="innerHTML"
+      hx-trigger="change, submit"
+      hx-push-url="true">
+  <label>Estado
+    <select name="estado">
+      <option value="">Todos</option>
+      {% for e in estados %}
+        <option value="{{ e }}" {% if e == estado %}selected{% endif %}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Categoría
+    <select name="categoria">
+      <option value="">Todas</option>
+      {% for c in categorias %}
+        <option value="{{ c.id }}" {% if c.id == categoria %}selected{% endif %}>{{ c.nombre }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Técnico
+    <select name="tecnico">
+      <option value="">Todos</option>
+      {% for t in tecnicos %}
+        <option value="{{ t.id }}" {% if t.id == tecnico %}selected{% endif %}>{{ t.nombre }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <input type="hidden" name="size" value="{{ size }}">
+  <button type="submit">Filtrar</button>
+</form>
+
+<div id="tabla-tickets">
+  {% include "_tabla_tickets.html" %}
+</div>
+{% endblock %}

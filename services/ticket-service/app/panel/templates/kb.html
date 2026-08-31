@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block titulo %}Base de conocimiento — Panel CTIC FIIS UNAC{% endblock %}
+{% block contenido %}
+<h1>Base de conocimiento</h1>
+
+<div id="aviso" class="alerta oculto" role="alert"></div>
+
+<div class="barra-acciones">
+  <input id="q" type="search" placeholder="Buscar por texto…" style="min-width:14rem">
+  <label>Estado
+    <select id="filtro-activo">
+      <option value="">Todos</option>
+      <option value="true">Activos</option>
+      <option value="false">Inactivos</option>
+    </select>
+  </label>
+  <button type="button" id="btn-buscar">Buscar</button>
+  <button type="button" id="btn-nuevo">Nuevo artículo</button>
+  <button type="button" id="btn-reindexar" style="margin-left:auto">Reindexar todo</button>
+</div>
+
+<table class="tabla">
+  <thead>
+    <tr>
+      <th>Título</th>
+      <th>Categoría</th>
+      <th>Etiquetas</th>
+      <th>Estado</th>
+      <th>Versión</th>
+      <th>Actualizado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody id="cuerpo-tabla">
+    <tr><td colspan="7" class="vacio">Cargando artículos…</td></tr>
+  </tbody>
+</table>
+<nav class="paginacion">
+  <span id="tabla-info"></span>
+  <a id="pag-prev" class="oculto">« Anterior</a>
+  <a id="pag-next" class="oculto">Siguiente »</a>
+</nav>
+
+{# Modal de creación/edición. Envía POST (nuevo) o PUT (editar). #}
+<dialog id="modal" class="modal">
+  <form id="form-articulo" method="dialog">
+    <h2 id="modal-titulo">Nuevo artículo</h2>
+    <input type="hidden" id="art-id">
+    <label for="art-titulo">Título</label>
+    <input id="art-titulo" required maxlength="200">
+    <label for="art-categoria">Categoría</label>
+    <input id="art-categoria" maxlength="100">
+    <label for="art-etiquetas">Etiquetas (separadas por comas)</label>
+    <input id="art-etiquetas" placeholder="correo, contraseña">
+    <label for="art-contenido">Contenido (Markdown)</label>
+    <textarea id="art-contenido" rows="10" required></textarea>
+    <div class="barra-acciones">
+      <button type="submit">Guardar</button>
+      <button type="button" id="btn-cancelar">Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+  const API_ARTICULOS = "/api/kb/articulos";
+  const API_REINDEX = "/api/kb/reindex";
+
+  const $ = (id) => document.getElementById(id);
+  const aviso = $("aviso");
+  let pagina = 1;
+  const TAM = 20;
+
+  function mostrarAviso(msg, tipo) {
+    aviso.textContent = msg;
+    aviso.className = "alerta " + (tipo || "error");
+  }
+  function limpiarAviso() { aviso.className = "alerta oculto"; aviso.textContent = ""; }
+
+  async function api(metodo, url, cuerpo) {
+    const opciones = { method: metodo, credentials: "same-origin", headers: {} };
+    if (cuerpo !== undefined) {
+      opciones.headers["Content-Type"] = "application/json";
+      opciones.body = JSON.stringify(cuerpo);
+    }
+    let resp;
+    try { resp = await fetch(url, opciones); }
+    catch (e) { const err = new Error("No se pudo contactar el servidor."); err.status = 0; throw err; }
+    if (resp.status === 401) { window.location.href = "/panel/login"; throw new Error("Sesión expirada."); }
+    if (resp.status === 403) { const err = new Error("Solo administradores."); err.status = 403; throw err; }
+    let json = {};
+    try { json = await resp.json(); } catch (e) { /* sin cuerpo */ }
+    if (!resp.ok || json.success === false) {
+      const err = new Error(json.message || ("Error " + resp.status)); err.status = resp.status; throw err;
+    }
+    return json.data;
+  }
+
+  function fmtFecha(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return isNaN(d) ? String(iso) : d.toLocaleDateString("es-PE");
+  }
+
+  async function cargar() {
+    const q = $("q").value.trim();
+    const activo = $("filtro-activo").value;
+    const params = new URLSearchParams({ page: pagina, size: TAM });
+    if (q) params.set("q", q);
+    if (activo) params.set("activo", activo);
+    let data;
+    try { data = await api("GET", API_ARTICULOS + "?" + params.toString()); }
+    catch (e) { mostrarAviso("No se pudieron cargar los artículos: " + e.message); return; }
+    limpiarAviso();
+    pintarTabla((data && data.items) || [], (data && data.total) || 0);
+  }
+
+  function pintarTabla(items, total) {
+    const tbody = $("cuerpo-tabla");
+    tbody.textContent = "";
+    if (items.length === 0) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 7; td.className = "vacio";
+      td.textContent = "No hay artículos que coincidan.";
+      tr.appendChild(td); tbody.appendChild(tr);
+    }
+    for (const a of items) tbody.appendChild(fila(a));
+    const paginas = Math.max(1, Math.ceil(total / TAM));
+    $("tabla-info").textContent = total + " artículo(s) · página " + pagina + " de " + paginas;
+    $("pag-prev").classList.toggle("oculto", pagina <= 1);
+    $("pag-next").classList.toggle("oculto", pagina >= paginas);
+  }
+
+  function celda(texto) {
+    const td = document.createElement("td");
+    td.textContent = texto;
+    return td;
+  }
+
+  function fila(a) {
+    const tr = document.createElement("tr");
+    tr.appendChild(celda(a.titulo || ""));
+    tr.appendChild(celda(a.categoria || "—"));
+    tr.appendChild(celda(Array.isArray(a.etiquetas) ? a.etiquetas.join(", ") : (a.etiquetas || "")));
+    const estado = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = "badge " + (a.activo ? "estado-resuelto" : "estado-cerrado");
+    badge.textContent = a.activo ? "Activo" : "Inactivo";
+    estado.appendChild(badge);
+    tr.appendChild(estado);
+    tr.appendChild(celda(a.version != null ? String(a.version) : "—"));
+    tr.appendChild(celda(fmtFecha(a.updatedAt)));
+    const acc = document.createElement("td");
+    const bEdit = document.createElement("button");
+    bEdit.type = "button"; bEdit.textContent = "Editar";
+    bEdit.addEventListener("click", () => editar(a.id));
+    acc.appendChild(bEdit);
+    if (a.activo) {
+      const bDel = document.createElement("button");
+      bDel.type = "button"; bDel.textContent = "Desactivar";
+      bDel.style.marginLeft = "0.4rem";
+      bDel.addEventListener("click", () => desactivar(a));
+      acc.appendChild(bDel);
+    }
+    tr.appendChild(acc);
+    return tr;
+  }
+
+  // ---------------- Crear / editar ----------------
+  const modal = $("modal");
+
+  function abrirModal(articulo) {
+    $("modal-titulo").textContent = articulo ? "Editar artículo" : "Nuevo artículo";
+    $("art-id").value = articulo ? articulo.id : "";
+    $("art-titulo").value = articulo ? (articulo.titulo || "") : "";
+    $("art-categoria").value = articulo ? (articulo.categoria || "") : "";
+    $("art-etiquetas").value = articulo
+      ? (Array.isArray(articulo.etiquetas) ? articulo.etiquetas.join(", ") : (articulo.etiquetas || ""))
+      : "";
+    $("art-contenido").value = articulo ? (articulo.contenido || "") : "";
+    modal.showModal();
+  }
+
+  async function editar(id) {
+    let art;
+    try { art = await api("GET", API_ARTICULOS + "/" + encodeURIComponent(id)); }
+    catch (e) { mostrarAviso("No se pudo cargar el artículo: " + e.message); return; }
+    abrirModal(art);
+  }
+
+  async function guardar(ev) {
+    ev.preventDefault();
+    const id = $("art-id").value;
+    const etiquetas = $("art-etiquetas").value.split(",").map((s) => s.trim()).filter(Boolean);
+    const cuerpo = {
+      titulo: $("art-titulo").value.trim(),
+      contenido: $("art-contenido").value,
+      categoria: $("art-categoria").value.trim(),
+      etiquetas,
+    };
+    try {
+      if (id) await api("PUT", API_ARTICULOS + "/" + encodeURIComponent(id), cuerpo);
+      else await api("POST", API_ARTICULOS, cuerpo);
+    } catch (e) {
+      mostrarAviso("No se pudo guardar: " + e.message);
+      return;
+    }
+    modal.close();
+    mostrarAviso(id ? "Artículo actualizado." : "Artículo creado.", "exito");
+    cargar();
+  }
+
+  async function desactivar(a) {
+    if (!confirm("¿Desactivar el artículo «" + a.titulo + "»?")) return;
+    try { await api("DELETE", API_ARTICULOS + "/" + encodeURIComponent(a.id)); }
+    catch (e) { mostrarAviso("No se pudo desactivar: " + e.message); return; }
+    mostrarAviso("Artículo desactivado.", "exito");
+    cargar();
+  }
+
+  async function reindexar() {
+    if (!confirm("¿Reindexar toda la base de conocimiento?")) return;
+    const btn = $("btn-reindexar");
+    btn.disabled = true; btn.textContent = "Reindexando…";
+    try {
+      const data = await api("POST", API_REINDEX);
+      const n = data && data.indexados != null ? data.indexados : "?";
+      mostrarAviso("Reindexación completada: " + n + " artículo(s).", "exito");
+    } catch (e) {
+      mostrarAviso("Error al reindexar: " + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "Reindexar todo";
+    }
+  }
+
+  // ---------------- Eventos ----------------
+  $("btn-buscar").addEventListener("click", () => { pagina = 1; cargar(); });
+  $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") { pagina = 1; cargar(); } });
+  $("filtro-activo").addEventListener("change", () => { pagina = 1; cargar(); });
+  $("btn-nuevo").addEventListener("click", () => abrirModal(null));
+  $("btn-cancelar").addEventListener("click", () => modal.close());
+  $("btn-reindexar").addEventListener("click", reindexar);
+  $("form-articulo").addEventListener("submit", guardar);
+  $("pag-prev").addEventListener("click", () => { if (pagina > 1) { pagina--; cargar(); } });
+  $("pag-next").addEventListener("click", () => { pagina++; cargar(); });
+
+  cargar();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{# Fragmento htmx: tabla de tickets + paginación (se inyecta en #tabla-tickets). #}
+<table class="tabla">
+  <thead>
+    <tr>
+      <th>Código</th>
+      <th>Estado</th>
+      <th>Prioridad</th>
+      <th>Categoría</th>
+      <th>Solicitante</th>
+      <th>Técnico</th>
+      <th>Registrado</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in tickets %}
+    <tr>
+      <td><a href="/panel/tickets/{{ t.codigo }}">{{ t.codigo }}</a></td>
+      <td><span class="badge estado-{{ t.estado|lower|replace(' ', '-') }}">{{ t.estado }}</span></td>
+      <td>{{ t.prioridad }}</td>
+      <td>{{ t.categoria.nombre if t.categoria else '—' }}</td>
+      <td>{{ t.usuario.nombre if t.usuario else '—' }}</td>
+      <td>{{ t.tecnico.nombre if t.tecnico else 'Sin asignar' }}</td>
+      <td>{{ t.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="vacio">No hay tickets que coincidan con los filtros.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<nav class="paginacion">
+  <span>{{ total }} ticket(s) · página {{ page }} de {{ paginas }}</span>
+  {% if page > 1 %}
+    <a hx-get="/panel/tickets?{{ filtros_qs }}&page={{ page - 1 }}"
+       hx-target="#tabla-tickets" hx-swap="innerHTML">« Anterior</a>
+  {% endif %}
+  {% if page < paginas %}
+    <a hx-get="/panel/tickets?{{ filtros_qs }}&page={{ page + 1 }}"
+       hx-target="#tabla-tickets" hx-swap="innerHTML">Siguiente »</a>
+  {% endif %}
+</nav>

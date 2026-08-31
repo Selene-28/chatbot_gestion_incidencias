@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titulo %}Acceso restringido — Panel CTIC FIIS UNAC{% endblock %}
+{% block contenido %}
+<h1>Acceso restringido</h1>
+<div class="alerta error">
+  Esta sección es solo para administradores. Su cuenta tiene el rol
+  «{{ staff.rol }}» y no dispone de permisos para verla.
+</div>
+<p><a href="/panel/tickets">« Volver a Tickets</a></p>
+{% endblock %}
