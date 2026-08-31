@@ -290,9 +290,7 @@ async def test_guardar_respuesta_del_tecnico(sesion) -> None:
         actor_id=tecnico_id,
     )
     assert actualizado.respuesta == "Se restableció el acceso al correo institucional."
-    assert any(
-        (h.comentario or "").startswith("Respuesta registrada:") for h in actualizado.historial
-    )
+    assert any(h.comentario == "Respuesta registrada." for h in actualizado.historial)
     with pytest.raises(ValidationAppError):
         await guardar_respuesta(sesion, codigo=ticket.codigo, texto="  ", actor_id=tecnico_id)
     with pytest.raises(ValidationAppError):

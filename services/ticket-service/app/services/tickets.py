@@ -479,7 +479,7 @@ async def guardar_respuesta(
             ticket_id=ticket.id,
             estado_anterior=ticket.estado,
             estado_nuevo=ticket.estado,
-            comentario=f"Respuesta registrada: {limpio}",
+            comentario="Respuesta registrada.",
             actor_id=actor_id,
         )
     )
