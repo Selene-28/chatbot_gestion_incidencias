@@ -18,6 +18,7 @@ from app.schemas import comunes
 from app.schemas.incidencias import EscalarRequest, IncidenciaCreate
 from app.services import adjuntos as servicio_adjuntos
 from app.services import tickets as servicio_tickets
+from app.services.tickets import ESTADOS_TERMINADOS
 
 router = APIRouter(
     prefix="/api/incidencias",
@@ -32,7 +33,9 @@ LISTADO_MAXIMO = 10  # prd/04 §3: consulta por correo devuelve máx. 10 tickets
 
 
 def _observaciones(ticket: Ticket) -> str:
-    """Último comentario del historial, o un texto por defecto si no hay ninguno."""
+    """Respuesta si el ticket está terminado; si no, el último comentario del técnico."""
+    if ticket.estado in ESTADOS_TERMINADOS and (ticket.respuesta or "").strip():
+        return ticket.respuesta.strip()
     for entrada in reversed(ticket.historial):
         if entrada.comentario:
             return entrada.comentario
@@ -41,6 +44,7 @@ def _observaciones(ticket: Ticket) -> str:
 
 def _ticket_a_dict(ticket: Ticket) -> dict[str, Any]:
     """Serializa un ticket con los campos EXACTOS de API-02 (prd/04 §3)."""
+    respuesta = (ticket.respuesta or "").strip() or None
     return {
         "ticketId": ticket.codigo,
         "estado": ticket.estado,
@@ -49,6 +53,7 @@ def _ticket_a_dict(ticket: Ticket) -> dict[str, Any]:
         "tecnico": ticket.tecnico.nombre if ticket.tecnico else None,
         "ultimaActualizacion": ticket.updated_at.isoformat(),
         "observaciones": _observaciones(ticket),
+        "respuesta": respuesta if ticket.estado in ESTADOS_TERMINADOS else None,
     }
 
 

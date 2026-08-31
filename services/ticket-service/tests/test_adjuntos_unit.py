@@ -1,15 +1,18 @@
 """Pruebas unitarias del servicio de adjuntos: firmas de bytes y nombres (RF-13)."""
 
 import re
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from app.core.errors import ValidationAppError
+from app.core.errors import ForbiddenError, NotFoundError, ValidationAppError
 from app.services.adjuntos import (
     TAMANO_MAXIMO_BYTES,
     detectar_tipo,
     generar_adjunto_id,
     nombre_archivo_almacenado,
+    ruta_adjunto_segura,
     sanear_nombre_original,
     validar_archivo,
 )
@@ -99,3 +102,41 @@ def test_sanear_nombre_original_quita_rutas() -> None:
     assert sanear_nombre_original(None) == "adjunto"
     assert sanear_nombre_original("   ") == "adjunto"
     assert len(sanear_nombre_original("a" * 300 + ".png")) <= 255
+
+
+def test_ruta_adjunto_segura_acepta_archivo_dentro_de_uploads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archivo = tmp_path / "tickets" / "adj.png"
+    archivo.parent.mkdir()
+    archivo.write_bytes(b"ok")
+    monkeypatch.setattr(
+        "app.services.adjuntos.get_settings",
+        lambda: SimpleNamespace(UPLOADS_DIR=str(tmp_path)),
+    )
+    adjunto = SimpleNamespace(ruta_almacenada=str(archivo))
+    assert ruta_adjunto_segura(adjunto) == archivo.resolve()
+
+
+def test_ruta_adjunto_segura_rechaza_fuera_de_uploads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "app.services.adjuntos.get_settings",
+        lambda: SimpleNamespace(UPLOADS_DIR=str(tmp_path / "uploads")),
+    )
+    adjunto = SimpleNamespace(ruta_almacenada="/etc/passwd")
+    with pytest.raises(ForbiddenError):
+        ruta_adjunto_segura(adjunto)
+
+
+def test_ruta_adjunto_segura_404_si_falta_archivo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "app.services.adjuntos.get_settings",
+        lambda: SimpleNamespace(UPLOADS_DIR=str(tmp_path)),
+    )
+    adjunto = SimpleNamespace(ruta_almacenada=str(tmp_path / "no-existe.png"))
+    with pytest.raises(NotFoundError):
+        ruta_adjunto_segura(adjunto)

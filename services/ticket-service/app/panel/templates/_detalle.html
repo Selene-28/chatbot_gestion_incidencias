@@ -25,7 +25,31 @@
     <dd>{{ ticket.updated_at.strftime('%d/%m/%Y %H:%M') }}</dd>
     <dt>Descripción</dt>
     <dd>{{ ticket.descripcion }}</dd>
+    {% if ticket.respuesta %}
+    <dt>Respuesta</dt>
+    <dd>{{ ticket.respuesta }}</dd>
+    {% endif %}
   </dl>
+
+  <section class="adjuntos">
+    <h2>Archivo adjunto</h2>
+    {% if ticket.adjuntos %}
+      <ul class="lista-adjuntos">
+        {% for adj in ticket.adjuntos %}
+          <li>
+            <a href="/panel/tickets/{{ ticket.codigo }}/adjuntos/{{ adj.id }}">
+              {{ adj.nombre_original }}
+            </a>
+            <span class="meta-adjunto">
+              {{ adj.mime_type }} · {{ (adj.tamano_bytes / 1024)|round(1) }} KB
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="vacio">Esta incidencia no tiene archivos adjuntos.</p>
+    {% endif %}
+  </section>
 
   <section class="acciones">
     <form hx-post="/panel/tickets/{{ ticket.codigo }}/estado"
@@ -61,6 +85,22 @@
         </select>
       </p>
       <button type="submit">Asignar</button>
+    </form>
+  </section>
+
+  <section class="acciones respuesta">
+    <form hx-post="/panel/tickets/{{ ticket.codigo }}/respuesta"
+          hx-target="#detalle" hx-swap="outerHTML">
+      <h2>Respuesta</h2>
+      <p class="ayuda">
+        El estudiante verá este texto al consultar el estado si la incidencia
+        está Resuelta o Cerrada (máx. 1000 caracteres).
+      </p>
+      <p>
+        <textarea name="respuesta" maxlength="1000" required
+                  placeholder="Escribe la respuesta para el estudiante…">{{ ticket.respuesta or '' }}</textarea>
+      </p>
+      <button type="submit">Guardar respuesta</button>
     </form>
   </section>
 

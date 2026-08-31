@@ -17,7 +17,7 @@ from typing import Annotated, Any
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -254,6 +254,54 @@ async def form_cambiar_estado(
         ticket = await servicio.obtener_ticket(session, codigo)
     contexto = await _contexto_detalle(session, staff, ticket, error, mensaje)
     return templates.TemplateResponse(request, "_detalle.html", contexto)
+
+
+@router.post("/tickets/{codigo}/respuesta", response_class=HTMLResponse)
+async def form_guardar_respuesta(
+    request: Request,
+    session: SessionDep,
+    staff: StaffDep,
+    codigo: str,
+    respuesta: Annotated[str, Form()] = "",
+) -> Response:
+    """Guarda la respuesta del técnico (máx. 1000 caracteres) y refresca el detalle."""
+    if staff is None:
+        return _redirigir_login(request)
+    servicio = _servicio_tickets()
+    error = mensaje = None
+    try:
+        ticket = await servicio.guardar_respuesta(
+            session, codigo=codigo, texto=respuesta, actor_id=staff.id
+        )
+        mensaje = "La respuesta se guardó correctamente."
+    except AppError as exc:
+        error = exc.message
+        ticket = await servicio.obtener_ticket(session, codigo)
+    contexto = await _contexto_detalle(session, staff, ticket, error, mensaje)
+    return templates.TemplateResponse(request, "_detalle.html", contexto)
+
+
+@router.get("/tickets/{codigo}/adjuntos/{adjunto_id}")
+async def descargar_adjunto(
+    request: Request,
+    session: SessionDep,
+    staff: StaffDep,
+    codigo: str,
+    adjunto_id: int,
+) -> Response:
+    """Descarga un adjunto del ticket (solo staff autenticado, RF-13)."""
+    if staff is None:
+        return _redirigir_login(request)  # request se usa para HX-Redirect / 303
+    from app.services.adjuntos import ruta_adjunto_segura
+
+    servicio = _servicio_tickets()
+    adjunto = await servicio.obtener_adjunto(session, codigo=codigo, adjunto_id=adjunto_id)
+    ruta = ruta_adjunto_segura(adjunto)
+    return FileResponse(
+        path=str(ruta),
+        filename=adjunto.nombre_original,
+        media_type=adjunto.mime_type,
+    )
 
 
 # --------------------------------------------------------------------------- #

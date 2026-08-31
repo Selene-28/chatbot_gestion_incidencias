@@ -25,6 +25,7 @@ from app.services.tickets import (
     asignar_tecnico,
     cambiar_estado,
     escalar,
+    guardar_respuesta,
     listar_por_correo,
     listar_tickets,
     obtener_ticket,
@@ -242,7 +243,7 @@ async def test_ciclo_de_vida_completo(sesion) -> None:
         sesion, codigo=ticket.codigo, tecnico_id=tecnico_id, actor_id=tecnico_id
     )
     assert asignado.estado == "Asignado"
-    assert asignado.tecnico.nombre == "Carlos Ramírez"
+    assert asignado.tecnico.nombre == "Paul Barzola"
 
     en_proceso = await cambiar_estado(
         sesion, codigo=ticket.codigo, nuevo_estado="En Proceso", actor_id=tecnico_id
@@ -277,6 +278,29 @@ async def test_ciclo_de_vida_completo(sesion) -> None:
     assert cerrado.historial[-1].actor_id == tecnico_id
 
 
+async def test_guardar_respuesta_del_tecnico(sesion) -> None:
+    ticket = await _registrar(sesion)
+    tecnico_id = (
+        await sesion.execute(select(Usuario.id).where(Usuario.correo == "tecnico1@ctic.local"))
+    ).scalar_one()
+    actualizado = await guardar_respuesta(
+        sesion,
+        codigo=ticket.codigo,
+        texto="Se restableció el acceso al correo institucional.",
+        actor_id=tecnico_id,
+    )
+    assert actualizado.respuesta == "Se restableció el acceso al correo institucional."
+    assert any(
+        (h.comentario or "").startswith("Respuesta registrada:") for h in actualizado.historial
+    )
+    with pytest.raises(ValidationAppError):
+        await guardar_respuesta(sesion, codigo=ticket.codigo, texto="  ", actor_id=tecnico_id)
+    with pytest.raises(ValidationAppError):
+        await guardar_respuesta(
+            sesion, codigo=ticket.codigo, texto="<b>html</b>", actor_id=tecnico_id
+        )
+
+
 async def test_transicion_invalida_conflict(sesion) -> None:
     ticket = await _registrar(sesion)
     with pytest.raises(ConflictError):  # Registrado → Resuelto no permitido
@@ -289,7 +313,7 @@ async def test_cerrado_es_terminal_en_bd(sesion) -> None:
     correo = _correo()
     ticket = await _registrar(sesion, correo=correo)
     tecnico_id = (
-        await sesion.execute(select(Usuario.id).where(Usuario.correo == "tecnico2@ctic.local"))
+        await sesion.execute(select(Usuario.id).where(Usuario.correo == "tecnico1@ctic.local"))
     ).scalar_one()
     await asignar_tecnico(sesion, codigo=ticket.codigo, tecnico_id=tecnico_id, actor_id=tecnico_id)
     await cambiar_estado(sesion, codigo=ticket.codigo, nuevo_estado="En Proceso", actor_id=None)

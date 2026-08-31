@@ -35,7 +35,7 @@ CATEGORIAS = (
     "Otros",
 )
 
-STAFF_CORREOS = ("admin@ctic.local", "tecnico1@ctic.local", "tecnico2@ctic.local")
+STAFF_CORREOS = ("admin@ctic.local", "tecnico1@ctic.local")
 
 
 def upgrade() -> None:
@@ -90,14 +90,8 @@ def upgrade() -> None:
             "password_hash": hasher.hash(admin_password),
         },
         {
-            "nombre": "Carlos Ramírez",
+            "nombre": "Paul Barzola",
             "correo": "tecnico1@ctic.local",
-            "rol": "tecnico",
-            "password_hash": hasher.hash(tecnico_password),
-        },
-        {
-            "nombre": "María Torres",
-            "correo": "tecnico2@ctic.local",
             "rol": "tecnico",
             "password_hash": hasher.hash(tecnico_password),
         },

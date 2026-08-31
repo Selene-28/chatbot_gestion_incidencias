@@ -91,9 +91,10 @@ def detalle_ticket(codigo: str, estado: str = "En Proceso") -> dict[str, Any]:
         "estado": estado,
         "categoria": "Correo Institucional",
         "fechaRegistro": "2026-06-18T09:15:00",
-        "tecnico": "Carlos Ramírez",
+        "tecnico": "Paul Barzola",
         "ultimaActualizacion": "2026-06-18T10:30:00",
         "observaciones": "Incidencia asignada al área de soporte.",
+        "respuesta": None,
     }
 
 

@@ -141,7 +141,7 @@ propietario del ticket, responder `403`** (un usuario solo consulta lo suyo).
     "estado": "En Proceso",
     "categoria": "Correo Institucional",
     "fechaRegistro": "2026-06-18T09:15:00",
-    "tecnico": "Carlos Ramírez",
+    "tecnico": "Paul Barzola",
     "ultimaActualizacion": "2026-06-18T10:30:00",
     "observaciones": "Incidencia asignada al área de soporte."
 } }

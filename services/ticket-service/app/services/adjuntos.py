@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
-from app.core.errors import ValidationAppError
-from app.models import AdjuntoStaging
+from app.core.errors import ForbiddenError, NotFoundError, ValidationAppError
+from app.models import AdjuntoStaging, TicketAdjunto
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,17 @@ def generar_adjunto_id() -> str:
 def nombre_archivo_almacenado(adjunto_id: str, extension: str) -> str:
     """Nombre físico del archivo: id aleatorio + extensión detectada."""
     return f"{adjunto_id}{extension}"
+
+
+def ruta_adjunto_segura(adjunto: TicketAdjunto) -> Path:
+    """Resuelve la ruta física del adjunto; exige que viva bajo UPLOADS_DIR (RF-13)."""
+    uploads = Path(get_settings().UPLOADS_DIR).resolve()
+    destino = Path(adjunto.ruta_almacenada).resolve()
+    if not destino.is_relative_to(uploads):
+        raise ForbiddenError("La ruta del adjunto no es válida.")
+    if not destino.is_file():
+        raise NotFoundError("El archivo adjunto ya no está disponible.")
+    return destino
 
 
 def sanear_nombre_original(nombre: str | None) -> str:

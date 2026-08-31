@@ -172,6 +172,7 @@ CREATE TABLE tickets (
   created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   resuelto_at         DATETIME      NULL,
+  respuesta           VARCHAR(1000) NULL COMMENT 'Nota del técnico para el estudiante (RF-02)',
   FOREIGN KEY (usuario_id)   REFERENCES usuarios(id),
   FOREIGN KEY (categoria_id) REFERENCES categorias(id),
   FOREIGN KEY (tecnico_id)   REFERENCES usuarios(id),

@@ -30,7 +30,7 @@ PASSWORD_HASH = hash_password(PASSWORD)  # una sola vez: Argon2 es costoso a pro
 def _staff(rol: str = "tecnico", activo: bool = True, con_password: bool = True) -> Any:
     return SimpleNamespace(
         id=7,
-        nombre="Carlos Ramírez",
+        nombre="Paul Barzola",
         correo="tecnico1@ctic.local",
         rol=rol,
         password_hash=PASSWORD_HASH if con_password else None,
@@ -81,7 +81,7 @@ def test_login_ok_setea_cookie_httponly_sin_token_en_body(
     assert r.status_code == 200
     cuerpo = r.json()
     assert cuerpo["success"] is True
-    assert cuerpo["data"] == {"rol": "tecnico", "nombre": "Carlos Ramírez"}
+    assert cuerpo["data"] == {"rol": "tecnico", "nombre": "Paul Barzola"}
 
     set_cookie = r.headers["set-cookie"]
     assert "panel_token=" in set_cookie
@@ -183,7 +183,7 @@ def test_require_staff_acepta_tecnico_valido(
     cliente.cookies.set("panel_token", create_access_token("7", "tecnico"))
     r = cliente.get("/api/panel/tecnicos")
     assert r.status_code == 200
-    assert r.json()["data"]["items"][0]["nombre"] == "Carlos Ramírez"
+    assert r.json()["data"]["items"][0]["nombre"] == "Paul Barzola"
 
 
 def test_require_admin_rechaza_tecnico(

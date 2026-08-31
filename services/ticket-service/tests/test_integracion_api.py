@@ -139,7 +139,9 @@ async def test_api02_consultar_estado_campos_exactos(api_client) -> None:
         "tecnico",
         "ultimaActualizacion",
         "observaciones",
+        "respuesta",
     }
+    assert data["respuesta"] is None
     assert data["ticketId"] == ticket_id
     assert data["estado"] == "Registrado"
     assert data["categoria"] == "Correo Institucional"

@@ -209,8 +209,24 @@ async def test_f03_por_codigo_feliz(bot, conv, deps, tickets):
     await _pulsar(bot, conv, deps, "modo_codigo")
     mensajes = await _decir(bot, conv, deps, "INC-2026-0007")
     assert "En Proceso" in mensajes[0].texto
-    assert "Carlos Ramírez" in mensajes[0].texto
+    assert "Paul Barzola" in mensajes[0].texto
+    assert "Observaciones:" in mensajes[0].texto
     assert conv.flujo_contexto["sesion"]["ultimo_ticket"] == "INC-2026-0007"
+
+
+async def test_f03_muestra_respuesta_si_esta_resuelto(bot, conv, deps, tickets):
+    detalle = detalle_ticket("INC-2026-0008", estado="Resuelto")
+    detalle["respuesta"] = "Se restableció tu contraseña institucional."
+    tickets.tickets["INC-2026-0008"] = {
+        "correo": "ana@unac.edu.pe",
+        "detalle": detalle,
+    }
+    conv.usuario_correo = "ana@unac.edu.pe"
+    await _pulsar(bot, conv, deps, "consultar_estado")
+    await _pulsar(bot, conv, deps, "modo_codigo")
+    mensajes = await _decir(bot, conv, deps, "INC-2026-0008")
+    assert "Respuesta: Se restableció tu contraseña institucional." in mensajes[0].texto
+    assert "Observaciones:" not in mensajes[0].texto
 
 
 async def test_f03_403_no_revela_datos(bot, conv, deps, tickets):

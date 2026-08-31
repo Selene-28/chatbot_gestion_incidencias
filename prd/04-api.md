@@ -79,11 +79,14 @@ El parámetro `correo` implementa RN-03: si no coincide con el propietario → `
     "estado": "En Proceso",
     "categoria": "Correo Institucional",
     "fechaRegistro": "2026-06-18T09:15:00",
-    "tecnico": "Carlos Ramírez",
+    "tecnico": "Paul Barzola",
     "ultimaActualizacion": "2026-06-18T10:30:00",
-    "observaciones": "Incidencia asignada al área de soporte."
+    "observaciones": "Incidencia asignada al área de soporte.",
+    "respuesta": null
 } }
 ```
+
+`respuesta` es la nota del técnico (máx. 1000 caracteres). Solo se expone cuando el ticket está `Resuelto` o `Cerrado`; en el resto de estados va `null` y `observaciones` muestra el último comentario del historial.
 
 `GET /api/incidencias?correo={correo}` — lista los tickets del correo (para consulta "por correo" de RF-02), ordenados por fecha desc, máx. 10.
 
@@ -113,8 +116,9 @@ Reglas: solo desde `Registrado`, `Asignado` o `En Proceso` (si no → `409`); es
 ### Endpoints del panel (no-DRS, internos)
 - `POST /api/auth/login` → JWT (staff).
 - `GET /api/panel/tickets?estado=&categoria=&tecnico=` — listado con filtros.
-- `PATCH /api/panel/tickets/{ticketId}` — `{ "estado": "...", "tecnicoId": 2, "comentario": "..." }` (valida transiciones RN-02).
-- `GET /api/panel/tickets/{ticketId}/historial`.
+- `PATCH /api/panel/tickets/{ticketId}` — `{ "estado": "...", "tecnicoId": 2, "comentario": "...", "respuesta": "..." }` (valida transiciones RN-02; `respuesta` máx. 1000).
+- `GET /api/panel/tickets/{ticketId}` — detalle con historial, `respuesta` y `adjuntos`.
+- `GET /panel/tickets/{codigo}/adjuntos/{adjuntoId}` — descarga del archivo (cookie `panel_token`, RF-13).
 
 ---
 

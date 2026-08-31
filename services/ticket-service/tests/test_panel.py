@@ -22,14 +22,13 @@ from app.panel import consultas, routes
 AHORA = datetime(2026, 7, 3, 10, 0, 0)
 
 STAFF = SimpleNamespace(
-    id=7, nombre="Carlos Ramírez", correo="tecnico1@ctic.local", rol="tecnico", activo=True
+    id=7, nombre="Paul Barzola", correo="tecnico1@ctic.local", rol="tecnico", activo=True
 )
 ADMIN = SimpleNamespace(
     id=1, nombre="Ana Admin", correo="admin@ctic.local", rol="admin", activo=True
 )
 TECNICOS = [
-    SimpleNamespace(id=7, nombre="Carlos Ramírez", correo="tecnico1@ctic.local"),
-    SimpleNamespace(id=8, nombre="Lucía Torres", correo="tecnico2@ctic.local"),
+    SimpleNamespace(id=7, nombre="Paul Barzola", correo="tecnico1@ctic.local"),
 ]
 CATEGORIAS = [SimpleNamespace(id=2, nombre="Correo Institucional")]
 
@@ -46,6 +45,8 @@ def _ticket(estado: str = "Registrado") -> Any:
         usuario=SimpleNamespace(id=1, nombre="Juan Pérez", correo="jperez@unac.edu.pe"),
         categoria=SimpleNamespace(id=2, nombre="Correo Institucional"),
         tecnico=None,
+        respuesta=None,
+        adjuntos=[],
         historial=[
             SimpleNamespace(
                 estado_anterior=None,
@@ -102,6 +103,20 @@ class ServicioFalso:
         self.llamadas.append(("asignar_tecnico", codigo, tecnico_id, actor_id))
         self.ticket.tecnico = next(t for t in TECNICOS if t.id == tecnico_id)
         return self.ticket
+
+    async def guardar_respuesta(
+        self, session: Any, *, codigo: str, texto: str, actor_id: int
+    ) -> Any:
+        self.llamadas.append(("guardar_respuesta", codigo, texto, actor_id))
+        self.ticket.respuesta = texto
+        return self.ticket
+
+    async def obtener_adjunto(self, session: Any, *, codigo: str, adjunto_id: int) -> Any:
+        self.llamadas.append(("obtener_adjunto", codigo, adjunto_id))
+        for adjunto in self.ticket.adjuntos:
+            if adjunto.id == adjunto_id:
+                return adjunto
+        raise NotFoundError("El adjunto indicado no existe.")
 
 
 @pytest.fixture()
@@ -202,7 +217,7 @@ def test_login_html_ok_setea_cookie_y_redirige(
     from app.api import auth as auth_api
 
     usuario = SimpleNamespace(
-        id=7, nombre="Carlos Ramírez", correo="tecnico1@ctic.local", rol="tecnico", activo=True
+        id=7, nombre="Paul Barzola", correo="tecnico1@ctic.local", rol="tecnico", activo=True
     )
 
     async def autenticar(session: Any, correo: str, password: str) -> Any:
@@ -240,7 +255,7 @@ def test_listado_renderiza_con_sesion(
     assert r.status_code == 200
     assert "INC-2026-0001" in r.text
     assert "Juan Pérez" in r.text
-    assert "Cerrar sesión (Carlos Ramírez)" in r.text
+    assert "Cerrar sesión (Paul Barzola)" in r.text
 
 
 def test_listado_htmx_devuelve_solo_fragmento(
@@ -304,11 +319,90 @@ def test_post_asignar_devuelve_fragmento_con_tecnico(
     autenticado: TestClient, servicio: ServicioFalso
 ) -> None:
     r = autenticado.post(
-        "/panel/tickets/INC-2026-0001/asignar", data={"tecnico_id": "8"}
+        "/panel/tickets/INC-2026-0001/asignar", data={"tecnico_id": "7"}
     )
     assert r.status_code == 200
-    assert ("asignar_tecnico", "INC-2026-0001", 8, STAFF.id) in servicio.llamadas
-    assert "Lucía Torres" in r.text
+    assert ("asignar_tecnico", "INC-2026-0001", 7, STAFF.id) in servicio.llamadas
+    assert "Paul Barzola" in r.text
+    assert "Carlos Ramírez" not in r.text
+    assert "María Torres" not in r.text
+    assert "Lucía Torres" not in r.text
+
+
+def test_detalle_muestra_seccion_respuesta_y_adjuntos(
+    autenticado: TestClient, servicio: ServicioFalso
+) -> None:
+    r = autenticado.get("/panel/tickets/INC-2026-0001")
+    assert r.status_code == 200
+    assert "<h2>Respuesta</h2>" in r.text
+    assert 'name="respuesta"' in r.text
+    assert 'maxlength="1000"' in r.text
+    assert "<h2>Archivo adjunto</h2>" in r.text
+    assert "Esta incidencia no tiene archivos adjuntos." in r.text
+
+
+def test_post_respuesta_guarda_texto(
+    autenticado: TestClient, servicio: ServicioFalso
+) -> None:
+    r = autenticado.post(
+        "/panel/tickets/INC-2026-0001/respuesta",
+        data={"respuesta": "Se restableció el acceso al correo."},
+    )
+    assert r.status_code == 200
+    assert (
+        "guardar_respuesta",
+        "INC-2026-0001",
+        "Se restableció el acceso al correo.",
+        STAFF.id,
+    ) in servicio.llamadas
+    assert "La respuesta se guardó correctamente." in r.text
+    assert "Se restableció el acceso al correo." in r.text
+
+
+def test_detalle_lista_adjunto_con_enlace_de_descarga(
+    autenticado: TestClient, servicio: ServicioFalso
+) -> None:
+    servicio.ticket.adjuntos = [
+        SimpleNamespace(
+            id=3,
+            nombre_original="evidencia.png",
+            mime_type="image/png",
+            tamano_bytes=2048,
+        )
+    ]
+    r = autenticado.get("/panel/tickets/INC-2026-0001")
+    assert r.status_code == 200
+    assert "evidencia.png" in r.text
+    assert 'href="/panel/tickets/INC-2026-0001/adjuntos/3"' in r.text
+
+
+def test_descargar_adjunto_devuelve_archivo(
+    autenticado: TestClient,
+    servicio: ServicioFalso,
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archivo = tmp_path / "tickets" / "adj_abc.png"
+    archivo.parent.mkdir()
+    archivo.write_bytes(b"contenido-adjunto")
+    servicio.ticket.adjuntos = [
+        SimpleNamespace(
+            id=3,
+            nombre_original="evidencia.png",
+            mime_type="image/png",
+            tamano_bytes=len(b"contenido-adjunto"),
+            ruta_almacenada=str(archivo),
+        )
+    ]
+    from app.services import adjuntos as svc_adjuntos
+
+    monkeypatch.setattr(
+        svc_adjuntos, "get_settings", lambda: SimpleNamespace(UPLOADS_DIR=str(tmp_path))
+    )
+    r = autenticado.get("/panel/tickets/INC-2026-0001/adjuntos/3")
+    assert r.status_code == 200
+    assert r.content == b"contenido-adjunto"
+    assert "evidencia.png" in r.headers.get("content-disposition", "")
 
 
 # --------------------------------------------------------------------------- #
@@ -433,16 +527,16 @@ def test_api_patch_aplica_asignacion_y_estado(
 ) -> None:
     r = autenticado.patch(
         "/api/panel/tickets/INC-2026-0001",
-        json={"estado": "Asignado", "tecnicoId": 8, "comentario": "ok"},
+        json={"estado": "Asignado", "tecnicoId": 7, "comentario": "ok"},
     )
     assert r.status_code == 200
     assert servicio.llamadas == [
-        ("asignar_tecnico", "INC-2026-0001", 8, STAFF.id),
+        ("asignar_tecnico", "INC-2026-0001", 7, STAFF.id),
         ("cambiar_estado", "INC-2026-0001", "Asignado", STAFF.id, "ok"),
     ]
     data = r.json()["data"]
     assert data["estado"] == "Asignado"
-    assert data["tecnico"] == "Lucía Torres"
+    assert data["tecnico"] == "Paul Barzola"
 
 
 def test_api_patch_propaga_409_transicion_invalida(
@@ -477,7 +571,7 @@ def test_api_tecnicos(autenticado: TestClient, servicio: ServicioFalso) -> None:
     r = autenticado.get("/api/panel/tecnicos")
     assert r.status_code == 200
     nombres = [t["nombre"] for t in r.json()["data"]["items"]]
-    assert nombres == ["Carlos Ramírez", "Lucía Torres"]
+    assert nombres == ["Paul Barzola"]
 
 
 # --------------------------------------------------------------------------- #

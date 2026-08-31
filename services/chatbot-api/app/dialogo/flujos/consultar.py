@@ -32,18 +32,28 @@ _PROMPT_MODO = con_opciones("¿Cómo deseas consultar tu incidencia?", _OPCIONES
 _PROMPT_CODIGO = texto_plano("Indícame el número de ticket (formato INC-AAAA-NNNN).")
 
 
+_ESTADOS_TERMINADOS = frozenset({"Resuelto", "Cerrado"})
+
+
 def _detalle_ticket(data: dict[str, Any]) -> str:
-    """Formatea el detalle de API-02 (estado, categoría, fechas, técnico)."""
+    """Formatea el detalle de API-02 (estado, categoría, fechas, técnico, respuesta)."""
     tecnico = data.get("tecnico") or "Aún no asignado"
-    return (
-        f"Estado de la incidencia {data.get('ticketId')}:\n\n"
-        f"• Estado: {data.get('estado')}\n"
-        f"• Categoría: {data.get('categoria')}\n"
-        f"• Fecha de registro: {data.get('fechaRegistro')}\n"
-        f"• Técnico asignado: {tecnico}\n"
-        f"• Última actualización: {data.get('ultimaActualizacion')}\n"
-        f"• Observaciones: {data.get('observaciones')}"
-    )
+    estado = data.get("estado") or ""
+    lineas = [
+        f"Estado de la incidencia {data.get('ticketId')}:",
+        "",
+        f"• Estado: {estado}",
+        f"• Categoría: {data.get('categoria')}",
+        f"• Fecha de registro: {data.get('fechaRegistro')}",
+        f"• Técnico asignado: {tecnico}",
+        f"• Última actualización: {data.get('ultimaActualizacion')}",
+    ]
+    respuesta = (data.get("respuesta") or "").strip()
+    if estado in _ESTADOS_TERMINADOS and respuesta:
+        lineas.append(f"• Respuesta: {respuesta}")
+    else:
+        lineas.append(f"• Observaciones: {data.get('observaciones')}")
+    return "\n".join(lineas)
 
 
 class FlujoConsultar:

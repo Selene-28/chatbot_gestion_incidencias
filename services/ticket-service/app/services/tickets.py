@@ -440,6 +440,64 @@ async def asignar_tecnico(
     return await obtener_ticket(session, codigo)
 
 
+ESTADOS_TERMINADOS: frozenset[str] = frozenset(
+    {EstadoTicket.RESUELTO.value, EstadoTicket.CERRADO.value}
+)
+
+
+async def guardar_respuesta(
+    session: AsyncSession, *, codigo: str, texto: str, actor_id: int
+) -> Ticket:
+    """Guarda la respuesta del técnico (máx. 1000 caracteres) sin cambiar estado."""
+    limpio = (texto or "").strip()
+    if not limpio:
+        raise ValidationAppError(
+            "Los datos enviados son inválidos.",
+            errors=[{"field": "respuesta", "description": "La respuesta no puede estar vacía."}],
+        )
+    if len(limpio) > comunes.RESPUESTA_MAX:
+        raise ValidationAppError(
+            "Los datos enviados son inválidos.",
+            errors=[
+                {
+                    "field": "respuesta",
+                    "description": (
+                        f"La respuesta no puede superar {comunes.RESPUESTA_MAX} caracteres."
+                    ),
+                }
+            ],
+        )
+    if comunes.contiene_html(limpio):
+        raise ValidationAppError(
+            "Los datos enviados son inválidos.",
+            errors=[{"field": "respuesta", "description": "La respuesta no puede contener HTML."}],
+        )
+    ticket = await obtener_ticket(session, codigo)
+    ticket.respuesta = limpio
+    session.add(
+        TicketHistorial(
+            ticket_id=ticket.id,
+            estado_anterior=ticket.estado,
+            estado_nuevo=ticket.estado,
+            comentario=f"Respuesta registrada: {limpio}",
+            actor_id=actor_id,
+        )
+    )
+    await session.commit()
+    return await obtener_ticket(session, codigo)
+
+
+async def obtener_adjunto(
+    session: AsyncSession, *, codigo: str, adjunto_id: int
+) -> TicketAdjunto:
+    """Devuelve un adjunto del ticket o 404 si no pertenece a ese código."""
+    ticket = await obtener_ticket(session, codigo)
+    for adjunto in ticket.adjuntos:
+        if adjunto.id == adjunto_id:
+            return adjunto
+    raise NotFoundError("El adjunto indicado no existe.")
+
+
 # --------------------------------------------------------------------------
 # Listado para el panel (RF-11)
 # --------------------------------------------------------------------------

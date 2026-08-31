@@ -18,6 +18,7 @@ from app.core.deps import require_staff
 from app.core.envelope import ok
 from app.core.errors import ValidationAppError
 from app.panel import consultas
+from app.schemas import comunes
 
 router = APIRouter(prefix="/api/panel", tags=["panel"], dependencies=[Depends(require_staff)])
 
@@ -58,12 +59,23 @@ def _ticket_resumen(ticket: Any) -> dict[str, Any]:
 
 
 def _ticket_detalle(ticket: Any) -> dict[str, Any]:
-    """Proyección de detalle: resumen + descripción + historial completo."""
+    """Proyección de detalle: resumen + descripción + historial + adjuntos."""
     return {
         **_ticket_resumen(ticket),
         "subcategoria": ticket.subcategoria,
         "descripcion": ticket.descripcion,
+        "respuesta": getattr(ticket, "respuesta", None),
         "ultimaActualizacion": ticket.updated_at.isoformat(),
+        "adjuntos": [
+            {
+                "id": adjunto.id,
+                "nombre": adjunto.nombre_original,
+                "mimeType": adjunto.mime_type,
+                "tamanoBytes": adjunto.tamano_bytes,
+                "url": f"/panel/tickets/{ticket.codigo}/adjuntos/{adjunto.id}",
+            }
+            for adjunto in (getattr(ticket, "adjuntos", None) or [])
+        ],
         "historial": [
             {
                 "estadoAnterior": evento.estado_anterior,
@@ -84,7 +96,8 @@ class PatchTicketRequest(BaseModel):
 
     estado: str | None = None
     tecnico_id: int | None = Field(default=None, alias="tecnicoId")
-    comentario: str | None = Field(default=None, max_length=500)
+    comentario: str | None = Field(default=None, max_length=comunes.COMENTARIO_MAX)
+    respuesta: str | None = Field(default=None, max_length=comunes.RESPUESTA_MAX)
 
 
 @router.get("/tickets")
@@ -125,9 +138,9 @@ async def actualizar_ticket(
     luego la transición de estado. Las transiciones inválidas (RN-02) llegan
     como ConflictError 409 desde el dominio y se propagan tal cual.
     """
-    if body.estado is None and body.tecnico_id is None:
+    if body.estado is None and body.tecnico_id is None and body.respuesta is None:
         raise ValidationAppError(
-            "Debe indicar al menos un cambio (estado y/o tecnicoId).",
+            "Debe indicar al menos un cambio (estado, tecnicoId o respuesta).",
             [{"field": "estado", "description": "No se indicó ningún cambio a aplicar."}],
         )
     servicio = _servicio_tickets()
@@ -143,6 +156,10 @@ async def actualizar_ticket(
             nuevo_estado=body.estado,
             actor_id=staff.id,
             comentario=body.comentario,
+        )
+    if body.respuesta is not None:
+        ticket = await servicio.guardar_respuesta(
+            session, codigo=ticket_id, texto=body.respuesta, actor_id=staff.id
         )
     return ok(_ticket_detalle(ticket), "El ticket fue actualizado correctamente.")
 

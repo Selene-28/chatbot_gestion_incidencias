@@ -1,6 +1,6 @@
 """Modelos SQLAlchemy 2 del dominio de tickets.
 
-Mapean EXACTAMENTE las tablas migradas por Alembic (0001 y 0003):
+Mapean EXACTAMENTE las tablas migradas por Alembic (0001, 0003 y 0005):
 usuarios, categorias, tickets, ticket_secuencias, ticket_historial,
 ticket_adjuntos, encuestas, idempotency_keys y adjuntos_staging.
 No se usa autogenerate: la fuente de verdad del DDL son las migraciones.
@@ -135,6 +135,7 @@ class Ticket(Base):
         server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
     resuelto_at: Mapped[datetime | None] = mapped_column(mysql.DATETIME())
+    respuesta: Mapped[str | None] = mapped_column(mysql.VARCHAR(1000))
 
     usuario: Mapped[Usuario] = relationship(back_populates="tickets", foreign_keys=[usuario_id])
     tecnico: Mapped[Usuario | None] = relationship(
