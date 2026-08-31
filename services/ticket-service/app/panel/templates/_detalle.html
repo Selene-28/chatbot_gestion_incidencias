@@ -55,19 +55,16 @@
     <form hx-post="/panel/tickets/{{ ticket.codigo }}/estado"
           hx-target="#detalle" hx-swap="outerHTML">
       <h2>Cambiar estado</h2>
-      {% if transiciones %}
-        {# Solo transiciones válidas (RN-02) desde el estado actual. #}
-        <p>
-          <select name="estado" required>
-            {% for e in transiciones %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
-          </select>
-        </p>
-        <p><textarea name="comentario" maxlength="500"
-                     placeholder="Comentario (opcional)"></textarea></p>
-        <button type="submit">Aplicar cambio</button>
-      {% else %}
-        <p class="vacio">El ticket está «{{ ticket.estado }}» y no admite más transiciones.</p>
-      {% endif %}
+      <p>
+        <select name="estado" required>
+          {% for e in estados %}
+            <option value="{{ e }}" {% if e == ticket.estado %}selected{% endif %}>{{ e }}</option>
+          {% endfor %}
+        </select>
+      </p>
+      <p><textarea name="comentario" maxlength="500"
+                   placeholder="Comentario (opcional)"></textarea></p>
+      <button type="submit">Guardar cambios</button>
     </form>
 
     <form hx-post="/panel/tickets/{{ ticket.codigo }}/asignar"

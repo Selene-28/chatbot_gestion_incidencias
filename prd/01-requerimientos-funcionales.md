@@ -86,7 +86,7 @@ El usuario siempre puede escribir libremente; el router de intenciones decide (v
 ## 5. Reglas de negocio
 
 - **RN-01 Código de ticket:** `INC-<año>-<correlativo de 4 dígitos>` (ej. `INC-2026-0001`), correlativo por año, generado transaccionalmente.
-- **RN-02 Estados de ticket:** `Registrado → Asignado → En Proceso → (Escalado) → Resuelto → Cerrado`. `Escalado` puede alcanzarse desde `Registrado`, `Asignado` o `En Proceso`. Todo cambio se registra en `ticket_historial` con actor y fecha.
+- **RN-02 Estados de ticket:** `Registrado`, `Asignado`, `En Proceso`, `Escalado`, `Resuelto`, `Cerrado`. El chatbot y API-03 siguen la secuencia habitual; en el panel el personal puede cambiar a cualquiera de los seis y guardar. Todo cambio se registra en `ticket_historial` con actor y fecha.
 - **RN-03 Privacidad de consulta:** la consulta de estado por correo solo devuelve tickets de ese correo; la consulta por código exige que el correo de la sesión coincida con el del ticket (SEG-02, PRI-03).
 - **RN-04 Encuesta:** se ofrece una sola vez por atención; responderla es opcional; se asocia al ticket si existe, si no, a la conversación.
 - **RN-05 Bot pausado:** mientras `estado_bot = PAUSED`, los mensajes del usuario se enrutan al agente y el motor de intenciones no responde.

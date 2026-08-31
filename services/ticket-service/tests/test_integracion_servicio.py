@@ -305,6 +305,11 @@ async def test_transicion_invalida_conflict(sesion) -> None:
         await cambiar_estado(sesion, codigo=ticket.codigo, nuevo_estado="Resuelto", actor_id=None)
     with pytest.raises(ValidationAppError):  # estado inexistente
         await cambiar_estado(sesion, codigo=ticket.codigo, nuevo_estado="Perdido", actor_id=None)
+    # El panel (libre=True) sí puede saltar a cualquier estado de la lista.
+    libre = await cambiar_estado(
+        sesion, codigo=ticket.codigo, nuevo_estado="Resuelto", actor_id=None, libre=True
+    )
+    assert libre.estado == "Resuelto"
 
 
 async def test_cerrado_es_terminal_en_bd(sesion) -> None:

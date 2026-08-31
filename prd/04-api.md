@@ -116,7 +116,7 @@ Reglas: solo desde `Registrado`, `Asignado` o `En Proceso` (si no → `409`); es
 ### Endpoints del panel (no-DRS, internos)
 - `POST /api/auth/login` → JWT (staff).
 - `GET /api/panel/tickets?estado=&categoria=&tecnico=` — listado con filtros.
-- `PATCH /api/panel/tickets/{ticketId}` — `{ "estado": "...", "tecnicoId": 2, "comentario": "...", "respuesta": "..." }` (valida transiciones RN-02; `respuesta` máx. 1000).
+- `PATCH /api/panel/tickets/{ticketId}` — `{ "estado": "...", "tecnicoId": 2, "comentario": "...", "respuesta": "..." }` (el panel admite cualquiera de los 6 estados; `respuesta` máx. 1000).
 - `GET /api/panel/tickets/{ticketId}` — detalle con historial, `respuesta` y `adjuntos`.
 - `GET /panel/tickets/{codigo}/adjuntos/{adjuntoId}` — descarga del archivo (cookie `panel_token`, RF-13).
 

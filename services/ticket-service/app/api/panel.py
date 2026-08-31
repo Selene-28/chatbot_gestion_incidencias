@@ -134,9 +134,8 @@ async def actualizar_ticket(
 ) -> JSONResponse:
     """Asigna técnico y/o cambia estado, con el staff autenticado como actor.
 
-    Orden: primero la asignación (Registrado→Asignado suele requerirla) y
-    luego la transición de estado. Las transiciones inválidas (RN-02) llegan
-    como ConflictError 409 desde el dominio y se propagan tal cual.
+    Orden: primero la asignación y luego el estado. El panel admite cualquiera
+    de los seis estados (``libre=True``); un estado inexistente sigue en 400.
     """
     if body.estado is None and body.tecnico_id is None and body.respuesta is None:
         raise ValidationAppError(
@@ -156,6 +155,7 @@ async def actualizar_ticket(
             nuevo_estado=body.estado,
             actor_id=staff.id,
             comentario=body.comentario,
+            libre=True,
         )
     if body.respuesta is not None:
         ticket = await servicio.guardar_respuesta(

@@ -205,7 +205,8 @@ async def _contexto_detalle(
     return {
         "staff": staff,
         "ticket": ticket,
-        "transiciones": TRANSICIONES_VALIDAS.get(ticket.estado, []),
+        "estados": _ORDEN_ESTADOS,
+        "transiciones": _ORDEN_ESTADOS,
         "tecnicos": await consultas.listar_tecnicos(session),
         "error": error,
         "mensaje": mensaje,
@@ -245,8 +246,9 @@ async def form_cambiar_estado(
             nuevo_estado=estado,
             actor_id=staff.id,
             comentario=comentario.strip() or None,
+            libre=True,
         )
-        mensaje = f"El estado cambió a «{estado}»."
+        mensaje = f"El estado se guardó como «{estado}»."
     except AppError as exc:
         # htmx no intercambia contenido en respuestas 4xx: devolvemos 200 con
         # un banner de error y el estado real (sin cambios) del ticket.

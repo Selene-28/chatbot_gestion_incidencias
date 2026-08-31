@@ -92,6 +92,7 @@ class ServicioFalso:
         nuevo_estado: str,
         actor_id: int | None,
         comentario: str | None = None,
+        libre: bool = False,
     ) -> Any:
         self.llamadas.append(("cambiar_estado", codigo, nuevo_estado, actor_id, comentario))
         self.ticket.estado = nuevo_estado
@@ -277,10 +278,16 @@ def test_detalle_renderiza_historial_y_transiciones(
     assert r.status_code == 200
     assert "No puedo acceder a mi correo institucional." in r.text
     assert "Ticket creado desde el chatbot." in r.text
-    # Desde «Registrado» solo se ofrecen Asignado y Escalado (RN-02)
-    assert '<option value="Asignado">' in r.text
-    assert '<option value="Escalado">' in r.text
-    assert '<option value="Resuelto">' not in r.text
+    for estado in (
+        "Registrado",
+        "Asignado",
+        "En Proceso",
+        "Escalado",
+        "Resuelto",
+        "Cerrado",
+    ):
+        assert f'<option value="{estado}"' in r.text
+    assert "Guardar cambios" in r.text
 
 
 def test_post_estado_devuelve_fragmento_actualizado(
@@ -298,7 +305,7 @@ def test_post_estado_devuelve_fragmento_actualizado(
         STAFF.id,
         "Se asigna a mesa de ayuda",
     ) in servicio.llamadas
-    assert "El estado cambió a «Asignado»." in r.text
+    assert "El estado se guardó como «Asignado»." in r.text
 
 
 def test_post_estado_conflicto_muestra_error(

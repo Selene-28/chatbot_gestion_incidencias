@@ -349,8 +349,9 @@ async def cambiar_estado(
     nuevo_estado: str,
     actor_id: int | None,
     comentario: str | None = None,
+    libre: bool = False,
 ) -> Ticket:
-    """Cambia el estado validando la matriz RN-02; toda transición deja historial."""
+    """Cambia el estado. Por defecto valida RN-02; ``libre=True`` (panel) admite cualquiera."""
     if nuevo_estado not in TRANSICIONES:
         raise ValidationAppError(
             "Los datos enviados son inválidos.",
@@ -362,7 +363,9 @@ async def cambiar_estado(
             ],
         )
     ticket = await obtener_ticket(session, codigo)
-    if not es_transicion_valida(ticket.estado, nuevo_estado):
+    if ticket.estado == nuevo_estado:
+        return ticket
+    if not libre and not es_transicion_valida(ticket.estado, nuevo_estado):
         raise ConflictError(
             f"Transición de estado no permitida: '{ticket.estado}' → '{nuevo_estado}'."
         )
@@ -386,8 +389,8 @@ def _aplicar_transicion(
     ticket.estado = nuevo_estado
     if nuevo_estado == EstadoTicket.RESUELTO:
         ticket.resuelto_at = datetime.now()
-    elif estado_anterior == EstadoTicket.RESUELTO:
-        ticket.resuelto_at = None  # reapertura
+    elif nuevo_estado != EstadoTicket.CERRADO:
+        ticket.resuelto_at = None  # reapertura o salto libre desde el panel
     session.add(
         TicketHistorial(
             ticket_id=ticket.id,
