@@ -90,6 +90,14 @@ location = /demo.html {
     root /usr/share/nginx/html/widget;
 }
 
+# Compatibilidad si demo.html se abre con src="./widget.js" (resuelve a /widget.js)
+location = /widget.js {
+    alias /usr/share/nginx/html/widget/widget.js;
+}
+location = /widget.css {
+    alias /usr/share/nginx/html/widget/widget.css;
+}
+
 # ---------- Página de mantenimiento ----------
 error_page 502 503 504 /maintenance.html;
 location = /maintenance.html {
