@@ -15,8 +15,8 @@ router = APIRouter(tags=["infraestructura"])
 async def healthz() -> dict[str, str]:
     """Devuelve 200 siempre que la app viva; reporta estado de dependencias.
 
-    llm: "configured" (key presente) | "degraded" (circuit breaker abierto,
-    prd/06 §6) | "disabled" (sin key configurada).
+    llm: "configured" (key real sk-ant-…) | "degraded" (circuit breaker abierto,
+    prd/06 §6) | "disabled" (sin key o placeholder de .env.example).
     """
     db_ok = await check_db(timeout=2.0)
     return {
