@@ -131,7 +131,7 @@
     Página de demostración del Asistente Virtual del CTIC
   </footer>
 
-  <!-- Widget del Asistente Virtual del CTIC -->
-  <script src="./widget.js" data-api="http://127.0.0.1:8000/api" defer></script>
+  <!-- Same-origin vía nginx: /demo.html, /widget/*, /api, /panel -->
+  <script src="/widget/widget.js" data-api="/api" defer></script>
 </body>
 </html>
