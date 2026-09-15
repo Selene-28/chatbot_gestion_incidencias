@@ -73,19 +73,59 @@ Documentación oficial (en inglés, con dibujos):
 
 ## Paso 3 — Variables compartidas (contraseñas)
 
-Estas claves las usan varias cajas. Se pegan **una vez** en el proyecto.
+En un proyecto **vacío** Railway **no muestra** un botón que diga “agregar
+variable”. El menú *GitHub Repository / Database / Template / Function* sirve
+para **crear una caja**, no para pegar claves.
 
-1. En el proyecto, abre **Variables** (o **Shared Variables** / variables
-   compartidas).
-2. Pulsa **Raw Editor** (editor en bruto).
-3. Abre en GitHub el archivo  
-   [`deploy/railway/variables.compartidas.env`](../deploy/railway/variables.compartidas.env).
-4. Cópialo, **cambia todos los `CAMBIAR-...`** por frases secretas largas.
-5. Pégalo y guarda.
+Haz **una** de estas dos rutas (la B es la más fácil si no ves Variables).
+
+### Ruta A — Si ya ves Variables en el proyecto
+
+1. Cierra el menú de cajas (clic fuera o Escape).
+2. Icono de **engranaje** (Settings) a la izquierda, o pestaña **Variables**
+   arriba del lienzo.
+3. **Shared Variables** / **Variable Set** → **Raw Editor**.
+4. Pega el bloque de 13 variables (abajo) y guarda.
+5. Márcalas como compartidas con **todos** los servicios.
+
+### Ruta B — La que funciona con el menú de la foto (recomendado)
+
+1. En ese menú pulsa **GitHub Repository** (no Database, no Function, no
+   Template).
+2. Elige el repo `chatbot_gestion_incidencias`.
+3. Cuando aparezca la primera caja, **haz clic en ella**.
+4. Arriba verás pestañas: **Deployments**, **Variables**, **Settings**, etc.
+   Entra a **Variables**.
+5. **Raw Editor** (o **+ New Variable** si no está el editor).
+6. Pega las 13 líneas, guarda.
+7. Si Railway ofrece **Share** / **Add to shared variable set** / compartir
+   con el proyecto: **acepta**. Así las otras cajas las heredan.
+
+Las 13 líneas (puedes pegarlas tal cual en la tesis):
+
+```
+TZ=America/Lima
+DB_ROOT_PASSWORD=TesisCtic2026Root
+DB_CHATBOT_PASSWORD=TesisCtic2026Chatbot
+DB_TICKETS_PASSWORD=TesisCtic2026Tickets
+TICKETS_API_KEY=TesisCtic2026ApiKey
+JWT_SECRET=TesisCtic2026JwtSecretoLargoParaFirmarElPanel
+SEED_ADMIN_PASSWORD=TesisCtic2026Admin
+SEED_TECNICO_PASSWORD=TesisCtic2026Tecnico
+ANTHROPIC_API_KEY=cambiar
+LLM_MODEL=claude-opus-4-8
+LLM_MODEL_ROUTER=claude-haiku-4-5
+RAG_UMBRAL_SIMILITUD=0.83
+ALLOWED_ORIGINS=https://fiis.unac.edu.pe,https://www.fiis.unac.edu.pe
+```
 
 `ANTHROPIC_API_KEY` puede quedarse en `cambiar`: el chat funciona igual, sin
 redacción “bonita” de IA. Si más adelante tienes una clave `sk-ant-...`, la
 pones aquí y vuelves a desplegar **chatbot-api**.
+
+Después de pegarlas, esa primera caja debe llamarse **`mysql`** (Settings →
+nombre) y seguir el resto del paso 4.1 (Dockerfile `db/Dockerfile` y volumen
+`/var/lib/mysql`).
 
 ---
 
