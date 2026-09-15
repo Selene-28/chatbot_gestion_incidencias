@@ -47,6 +47,9 @@ class Settings(BaseSettings):
         "http://localhost:8000,http://127.0.0.1:8000,"
         "http://localhost:8001,http://127.0.0.1:8001"
     )
+    # URL pública del chatbot (Railway u otro host). Se añade a CORS para que
+    # /demo.html y el widget en ese mismo dominio funcionen sin editar la lista.
+    PUBLIC_APP_URL: str = ""
 
     # Zona horaria (fechas ISO 8601 en America/Lima según prd/04 §5)
     TZ: str = "America/Lima"
@@ -54,7 +57,11 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> list[str]:
         """Devuelve los orígenes CORS como lista, ignorando entradas vacías."""
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        items = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        extra = self.PUBLIC_APP_URL.strip().rstrip("/")
+        if extra and extra not in items:
+            items.append(extra)
+        return items
 
 
 @lru_cache

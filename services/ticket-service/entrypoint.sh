@@ -5,7 +5,7 @@
 # y luego levanta el servidor HTTP.
 set -eu
 
-MAX_ATTEMPTS=30
+MAX_ATTEMPTS="${DB_WAIT_ATTEMPTS:-60}"
 SLEEP_SECONDS=2
 
 attempt=1

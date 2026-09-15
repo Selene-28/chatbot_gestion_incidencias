@@ -9,6 +9,7 @@ distinto:
 | [02-manual-del-panel.md](02-manual-del-panel.md) | Cómo usar el panel: ingreso y roles, gestión de incidencias (estados y transiciones), atención de handoffs (chat en vivo), administración de la base de conocimiento y dashboard de métricas. | **Personal del CTIC** (técnicos y administradores), lenguaje no técnico. |
 | [03-integracion-sistema-real.md](03-integracion-sistema-real.md) | Arquitectura de integración (ADR-03), contrato REST exacto que debe implementar el sistema de tickets real (API-01, 01b, 02, 03, 06 y métricas), dos caminos de integración, el "switch" de configuración y checklist de verificación con `curl`. | **Equipo de desarrollo de la universidad** (PHP/MySQL). |
 | [04-integracion-wordpress-fiis.md](04-integracion-wordpress-fiis.md) | Integración del botón flotante en el sitio WordPress de la FIIS: script, CORS, URLs, API, dependencias, local/producción y actualización de la KB. | **Webmaster FIIS / DevOps / CTIC**. |
+| [06-railway-paso-a-paso.md](06-railway-paso-a-paso.md) | Cómo publicar el chatbot en internet con Railway (sin Docker en el PC): cuenta, 4 servicios, dominio HTTPS y botón en la web. | **Tesista / quien no quiera instalar Docker**. |
 
 Para el contexto de producto y diseño técnico, ver la carpeta [`prd/`](../prd/)
 (documentos 00 a 08).

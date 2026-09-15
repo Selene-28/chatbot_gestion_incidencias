@@ -5,7 +5,7 @@
 # y luego levanta la API con uvicorn.
 set -eu
 
-MAX_ATTEMPTS=30
+MAX_ATTEMPTS="${DB_WAIT_ATTEMPTS:-60}"
 SLEEP_SECONDS=2
 
 attempt=1
@@ -26,6 +26,11 @@ done
 
 echo "[entrypoint] Aplicando migraciones (alembic upgrade head)..."
 alembic upgrade head
+
+if [ "${CARGAR_KB_AL_ARRANCAR:-0}" = "1" ]; then
+  echo "[entrypoint] Cargando base de conocimiento (CARGAR_KB_AL_ARRANCAR=1)..."
+  python -m app.scripts.cargar_kb
+fi
 
 echo "[entrypoint] Iniciando uvicorn en 0.0.0.0:8000..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000
