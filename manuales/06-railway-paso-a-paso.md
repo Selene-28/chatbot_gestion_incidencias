@@ -101,7 +101,8 @@ Haz **una** de estas dos rutas (la B es la más fácil si no ves Variables).
 7. Si Railway ofrece **Share** / **Add to shared variable set** / compartir
    con el proyecto: **acepta**. Así las otras cajas las heredan.
 
-Las 13 líneas (puedes pegarlas tal cual en la tesis):
+Las 13 líneas (puedes pegarlas tal cual en la tesis). Si **ya las pegaste**,
+no las borres: en `mysql` agrega solo `MYSQL_ROOT_PASSWORD` (paso 4.1).
 
 ```
 TZ=America/Lima
@@ -124,8 +125,8 @@ redacción “bonita” de IA. Si más adelante tienes una clave `sk-ant-...`, l
 pones aquí y vuelves a desplegar **chatbot-api**.
 
 Después de pegarlas, esa primera caja debe llamarse **`mysql`** (Settings →
-nombre) y seguir el resto del paso 4.1 (Dockerfile `db/Dockerfile` y volumen
-`/var/lib/mysql`).
+nombre) y seguir el resto del paso 4.1 (rama correcta, Dockerfile
+`db/Dockerfile` y volumen `/var/lib/mysql`).
 
 ---
 
@@ -147,13 +148,47 @@ Vas a pulsar **+ New** cuatro veces. **El nombre tiene que ser exacto**
 2. Elige `chatbot_gestion_incidencias`. Si no aparece: **Configure GitHub App**
    y dale acceso a ese repo.
 3. **Settings** del servicio:
-   - **Service name:** `mysql`
-   - **Source → Branch:** la rama de esta guía (ver “Antes de empezar”).
-   - **Root Directory:** vacío / `/` (la raíz).
-   - **Build → Dockerfile path:** `db/Dockerfile`
-4. **Settings → Volumes → Add Volume**
-   - Mount path: `/var/lib/mysql`
-5. Espera a que el deploy diga **Success**. La primera vez tarda un poco.
+   - Nombre: `mysql` (lápiz **Edit service name** en el título, no un campo
+     “Service name”).
+   - **Source → Branch:** `cursor/demo-api-same-origin-2754`  
+     **No dejes `master`.** En `master` no existe `db/Dockerfile` y el build
+     sale rojo al instante (“Failed to build an image”).
+   - **Root Directory:** vacío (no pongas `db`).
+   - **Build → Builder:** **Dockerfile** (no Railpack).
+   - **Build → Dockerfile Path:** `db/Dockerfile`
+4. **Variables** de **esta** caja (además de las 13 compartidas). Pulsa
+   **+ New Variable** y crea:
+
+   ```
+   MYSQL_ROOT_PASSWORD=TesisCtic2026Root
+   ```
+
+   (el mismo valor que `DB_ROOT_PASSWORD`; MySQL solo reconoce este nombre).
+5. Volumen: clic derecho en el lienzo o **Ctrl+K** → **New Volume**, adjúntalo
+   a `mysql`, **Mount path:** `/var/lib/mysql`
+6. Arriba a la derecha, **Apply** si aparece. Espera a que **Deployments**
+   diga **Success**. El build bueno tarda **1–3 minutos** (baja la imagen
+   MySQL). Si falla en 0–3 segundos, estás en la rama `master`: vuelve al
+   punto 3.
+
+#### Si ves FAILED / “Failed to build an image” (pantalla roja)
+
+No pulses **Diagnosis**. Haz esto, en este orden:
+
+1. En la misma caja `mysql`, pestaña **Settings** (no Project Settings).
+2. Baja a **Source**.
+3. En **Branch**, abre el desplegable y elige  
+   **`cursor/demo-api-same-origin-2754`**.
+4. Comprueba que **Dockerfile Path** sigue siendo `db/Dockerfile` y **Builder**
+   es **Dockerfile**.
+5. Pulsa **Update** / **Apply** (el botón morado de cambios pendientes).
+6. Vuelve a **Deployments**. Debe aparecer un deploy nuevo. El título ya
+   **no** debe ser el de `master` (“Panel: el desplegable de estado…”).
+7. Espera. Si otra vez sale rojo, pulsa **View logs** (arriba a la derecha
+   del recuadro rojo) y manda captura **del texto del log**, no de esta
+   lista de pasos.
+
+Hasta que `mysql` esté **Success** (verde), **no** crees `ticket-service`.
 
 ### 4.2 Caja `ticket-service`
 
@@ -274,6 +309,7 @@ lo cubre).
 | Qué ves | Qué revisar |
 |---|---|
 | Railway no lista el repo | GitHub App: da acceso al repo privado |
+| `mysql` FAILED en **Build > Build image** (0–3 s) | **Branch** está en `master`. Cámbiala a `cursor/demo-api-same-origin-2754` y **Apply** |
 | Build rojo en `chatbot-api` | Espera; si es RAM, súbela a 2 GB |
 | 502 / mantenimiento | Logs de `mysql` y `chatbot-api`; nombres de servicio exactos |
 | Chat “no se pudo conectar” | `PUBLIC_APP_URL` y `ALLOWED_ORIGINS` con `https://` |
