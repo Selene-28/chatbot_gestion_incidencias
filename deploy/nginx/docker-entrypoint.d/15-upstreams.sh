@@ -7,22 +7,44 @@ LISTEN_PORT="${PORT:-${LISTEN_PORT:-80}}"
 CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM:-http://chatbot-api:8000}"
 TICKETS_UPSTREAM="${TICKETS_UPSTREAM:-http://ticket-service:8001}"
 
-NS="${NGINX_RESOLVER:-}"
-if [ -z "$NS" ]; then
-  NS="$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
-  [ -n "$NS" ] || NS="127.0.0.11"
+# En Railway $PORT está definido: usar DNS privado aunque falten variables.
+if [ -n "${PORT:-}" ]; then
+  case "$CHATBOT_UPSTREAM" in
+    *railway.internal*) ;;
+    *) CHATBOT_UPSTREAM="http://chatbot-api.railway.internal:8000" ;;
+  esac
+  case "$TICKETS_UPSTREAM" in
+    *railway.internal*) ;;
+    *) TICKETS_UPSTREAM="http://ticket-service.railway.internal:8001" ;;
+  esac
 fi
-case "$NS" in
-  *:*) NS="[$NS]" ;;
-esac
 
-# Docker embebido es IPv4. Railway private DNS es IPv6: ipv6=off → 502.
+NS_LIST=""
+HAS_DOCKER_DNS=0
+while read -r _ ip _; do
+  [ -n "${ip:-}" ] || continue
+  if [ "$ip" = "127.0.0.11" ]; then
+    HAS_DOCKER_DNS=1
+  fi
+  case "$ip" in
+    *:*) ip="[$ip]" ;;
+  esac
+  NS_LIST="${NS_LIST} ${ip}"
+done <<EOF
+$(awk '/^nameserver/{print $1, $2}' /etc/resolv.conf 2>/dev/null || true)
+EOF
+NS_LIST="$(printf '%s' "$NS_LIST" | sed 's/^ *//')"
+[ -n "$NS_LIST" ] || NS_LIST="127.0.0.11"
+
 RESOLVER_OPTS="valid=10s"
-if [ "$NS" = "127.0.0.11" ]; then
+if [ "$HAS_DOCKER_DNS" = "1" ] && [ -z "${PORT:-}" ]; then
   RESOLVER_OPTS="valid=10s ipv6=off"
 fi
 
-echo "[nginx] LISTEN_PORT=${LISTEN_PORT} PORT=${PORT:-unset} resolver=${NS} ${RESOLVER_OPTS}"
+echo "[nginx] LISTEN_PORT=${LISTEN_PORT} PORT=${PORT:-unset}"
+echo "[nginx] resolv.conf:"
+sed -n '1,20p' /etc/resolv.conf 2>/dev/null || true
+echo "[nginx] resolver=${NS_LIST} ${RESOLVER_OPTS}"
 echo "[nginx] CHATBOT_UPSTREAM=${CHATBOT_UPSTREAM}"
 echo "[nginx] TICKETS_UPSTREAM=${TICKETS_UPSTREAM}"
 
@@ -40,7 +62,7 @@ server {
 EOF
 
 sed -i \
-  -e "s|^resolver .*|resolver ${NS} ${RESOLVER_OPTS};|" \
+  -e "s|^resolver .*|resolver ${NS_LIST} ${RESOLVER_OPTS};|" \
   -e "s|^set \$upstream_chatbot .*|set \$upstream_chatbot ${CHATBOT_UPSTREAM};|" \
   -e "s|^set \$upstream_tickets .*|set \$upstream_tickets ${TICKETS_UPSTREAM};|" \
   /etc/nginx/conf.d/_app.inc
