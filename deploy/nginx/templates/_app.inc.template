@@ -1,10 +1,11 @@
 # Cuerpo común del reverse proxy. Las variables $CHATBOT_UPSTREAM,
 # $TICKETS_UPSTREAM y $NGINX_RESOLVER las rellena el arranque del contenedor
 # (Docker: chatbot-api:8000; Railway: chatbot-api.railway.internal:8000).
+# $$… = variable nativa de nginx (envsubst no la vacía).
 
-resolver ${NGINX_RESOLVER} valid=10s;
-set $upstream_chatbot ${CHATBOT_UPSTREAM};
-set $upstream_tickets ${TICKETS_UPSTREAM};
+resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+set $$upstream_chatbot ${CHATBOT_UPSTREAM};
+set $$upstream_tickets ${TICKETS_UPSTREAM};
 
 client_max_body_size 6m;
 
@@ -12,11 +13,18 @@ proxy_connect_timeout 30s;
 proxy_send_timeout    30s;
 proxy_read_timeout    30s;
 
-proxy_set_header Host              $host;
-proxy_set_header X-Real-IP         $remote_addr;
-proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $scheme;
-proxy_set_header X-Forwarded-Host  $host;
+proxy_set_header Host              $$host;
+proxy_set_header X-Real-IP         $$remote_addr;
+proxy_set_header X-Forwarded-For   $$proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $$scheme;
+proxy_set_header X-Forwarded-Host  $$host;
+
+# Railway comprueba GET / en $PORT. Sin esto el proceso arranca y luego
+# marca Crashed por 404.
+location = / {
+    default_type text/plain;
+    return 200 "ok\n";
+}
 
 location /api/ {
     limit_req zone=api_limit burst=20 nodelay;
@@ -30,39 +38,39 @@ location /api/ {
         proxy_http_version 1.1;
         chunked_transfer_encoding off;
         proxy_read_timeout 1h;
-        proxy_pass $upstream_chatbot;
+        proxy_pass $$upstream_chatbot;
     }
     location /api/faq {
-        proxy_pass $upstream_chatbot;
+        proxy_pass $$upstream_chatbot;
     }
     location /api/kb {
-        proxy_pass $upstream_chatbot;
+        proxy_pass $$upstream_chatbot;
     }
     location /api/metricas {
-        proxy_pass $upstream_chatbot;
+        proxy_pass $$upstream_chatbot;
     }
 
     location /api/incidencias {
-        proxy_pass $upstream_tickets;
+        proxy_pass $$upstream_tickets;
     }
     location /api/encuesta {
-        proxy_pass $upstream_tickets;
+        proxy_pass $$upstream_tickets;
     }
     location /api/auth {
-        proxy_pass $upstream_tickets;
+        proxy_pass $$upstream_tickets;
     }
     location /api/panel {
-        proxy_pass $upstream_tickets;
+        proxy_pass $$upstream_tickets;
     }
 }
 
 location /panel {
     limit_req zone=api_limit burst=20 nodelay;
-    proxy_pass $upstream_tickets;
+    proxy_pass $$upstream_tickets;
 }
 
 location /healthz {
-    proxy_pass $upstream_chatbot;
+    proxy_pass $$upstream_chatbot;
 }
 
 location /widget/ {

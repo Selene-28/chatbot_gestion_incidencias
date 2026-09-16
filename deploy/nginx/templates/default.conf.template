@@ -1,7 +1,8 @@
 # Chatbot CTIC — reverse proxy (plantilla).
-# El arranque sustituye $LISTEN_PORT (80 en Docker, $PORT en Railway).
+# $$… sobrevive a envsubst (variables nativas de nginx).
+# ${LISTEN_PORT} lo rellena 15-upstreams.sh (80 en Docker, $PORT en Railway).
 
-limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+limit_req_zone $$binary_remote_addr zone=api_limit:10m rate=10r/s;
 
 server {
     listen ${LISTEN_PORT};

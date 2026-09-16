@@ -8,7 +8,11 @@ COPY deploy/nginx/docker-entrypoint.d/15-upstreams.sh /docker-entrypoint.d/15-up
 COPY deploy/nginx/html/maintenance.html /usr/share/nginx/html/maintenance.html
 COPY widget/public /usr/share/nginx/html/widget
 
-RUN chmod +x /docker-entrypoint.d/15-upstreams.sh
+RUN chmod +x /docker-entrypoint.d/15-upstreams.sh \
+    && rm -f /etc/nginx/conf.d/default.conf
+
+# Solo estas claves las rellena envsubst; el resto de $host / $uri se dejan.
+ENV NGINX_ENVSUBST_FILTER="LISTEN_PORT|CHATBOT_UPSTREAM|TICKETS_UPSTREAM|NGINX_RESOLVER"
 
 ENV LISTEN_PORT=80 \
     CHATBOT_UPSTREAM=http://chatbot-api:8000 \
