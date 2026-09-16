@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from app.core.db import check_db
-from app.core.mysql_url import ultimo_error_mysql
+from app.core.mysql_url import diagnostico_dns, ultimo_error_mysql
 
 router = APIRouter()
 
@@ -19,4 +19,5 @@ async def healthz() -> dict[str, Any]:
         detalle = ultimo_error_mysql()
         if detalle:
             cuerpo["db_error"] = detalle
+        cuerpo["dns"] = diagnostico_dns()
     return cuerpo

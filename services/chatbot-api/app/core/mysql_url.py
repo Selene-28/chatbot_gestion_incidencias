@@ -92,6 +92,51 @@ def _conecta(url_sync: str) -> BaseException | None:
     return None
 
 
+def _search_domains() -> list[str]:
+    dominios: list[str] = []
+    try:
+        with open("/etc/resolv.conf", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("search") or line.startswith("domain"):
+                    dominios.extend(line.split()[1:])
+    except OSError:
+        pass
+    return dominios
+
+
+def _hosts_desde_entorno() -> list[str]:
+    claves = (
+        "MYSQLHOST",
+        "MYSQL_HOST",
+        "DB_HOST",
+        "MYSQL_PRIVATE_HOST",
+        "RAILWAY_PRIVATE_DOMAIN",
+    )
+    return [os.environ[k] for k in claves if os.environ.get(k)]
+
+
+def diagnostico_dns() -> str:
+    """Texto corto para /healthz: si mysql resuelve y qué nameserver hay."""
+    partes: list[str] = []
+    try:
+        with open("/etc/resolv.conf", encoding="utf-8") as fh:
+            ns = [ln.split()[1] for ln in fh if ln.startswith("nameserver")]
+            if ns:
+                partes.append("ns=" + ",".join(ns[:3]))
+    except OSError:
+        partes.append("ns=?")
+    for h in ("mysql", "mysql.railway.internal"):
+        try:
+            ips = sorted({info[4][0] for info in socket.getaddrinfo(h, 3306)})
+            partes.append(f"{h}={','.join(ips) or 'vacio'}")
+        except OSError as exc:
+            partes.append(f"{h}=err{getattr(exc, 'errno', '')}")
+    extra = _hosts_desde_entorno()
+    if extra:
+        partes.append("env=" + ",".join(extra))
+    return ";".join(partes)
+
+
 def _hosts_candidatos(host: str, port: int) -> list[str]:
     vistos: list[str] = []
 
@@ -104,6 +149,14 @@ def _hosts_candidatos(host: str, port: int) -> list[str]:
         add("mysql.railway.internal")
     elif host.endswith(".railway.internal"):
         add(host.split(".", 1)[0])
+    for extra in _hosts_desde_entorno():
+        add(extra)
+        if "." not in extra:
+            add(f"{extra}.railway.internal")
+    for dominio in _search_domains():
+        if host and "." not in host:
+            add(f"{host}.{dominio}")
+        add(f"mysql.{dominio}")
     for family in (socket.AF_INET6, socket.AF_INET):
         try:
             for info in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
