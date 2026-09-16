@@ -249,54 +249,74 @@ En **Settings de mysql** deja todo como está: rama
 
 ### 4.3 Caja `chatbot-api`
 
-1. **+ New** → **GitHub Repo** → el mismo repo.
-2. **Settings:**
-   - Nombre: `chatbot-api`
-   - Branch: la misma.
-   - **Root Directory:** `services/chatbot-api`
-3. **Variables:**
+El primer build **tarda 15–25 minutos** (baja el modelo). No se puede
+acortar. Mientras construye, puedes armar `nginx` (paso 4.4).
 
-```
-DB_URL=mysql+asyncmy://chatbot:${{DB_CHATBOT_PASSWORD}}@mysql.railway.internal:3306/chatbot_db
-TICKETS_API_BASE_URL=http://ticket-service.railway.internal:8001
-CHROMA_DIR=/data/chroma
-CARGAR_KB_AL_ARRANCAR=1
-```
+1. Lienzo **+** → **GitHub Repo** → `Selene-28/chatbot_gestion_incidencias`
+   (no el otro repo).
+2. Lápiz **Edit service name** → `chatbot-api`.
+3. **Settings:**
+   - **Branch:** `cursor/demo-api-same-origin-2754`
+   - **Add Root Directory:** `services/chatbot-api` (sin `/` al inicio)
+   - **Wait for CI** apagado
+   - Baja (no escribas en *Filter Settings*) hasta **Resources** /
+     **Memory** y pon **al menos 2 GB**. Con 512 MB se cae.
+4. **Variables** → **Raw Editor**, pega todo, guarda:
 
-4. **Volume:** `/data/chroma`
-5. **Resources:** pon **al menos 2 GB de RAM**. Si dejas 512 MB, se cae al
-   cargar el modelo.
-6. El **primer build tarda 15–25 minutos**. Toma un té. En **Deployments** debe
-   terminar en verde.
+   ```
+   TZ=America/Lima
+   DB_ROOT_PASSWORD=TesisCtic2026Root
+   MYSQL_ROOT_PASSWORD=TesisCtic2026Root
+   DB_CHATBOT_PASSWORD=TesisCtic2026Chatbot
+   DB_TICKETS_PASSWORD=TesisCtic2026Tickets
+   TICKETS_API_KEY=TesisCtic2026ApiKey
+   JWT_SECRET=TesisCtic2026JwtSecretoLargoParaFirmarElPanel
+   SEED_ADMIN_PASSWORD=TesisCtic2026Admin
+   SEED_TECNICO_PASSWORD=TesisCtic2026Tecnico
+   ANTHROPIC_API_KEY=cambiar
+   LLM_MODEL=claude-opus-4-8
+   LLM_MODEL_ROUTER=claude-haiku-4-5
+   RAG_UMBRAL_SIMILITUD=0.83
+   ALLOWED_ORIGINS=https://fiis.unac.edu.pe,https://www.fiis.unac.edu.pe
+   DB_URL=mysql+asyncmy://chatbot:${{DB_CHATBOT_PASSWORD}}@mysql.railway.internal:3306/chatbot_db
+   TICKETS_API_BASE_URL=http://ticket-service.railway.internal:8001
+   CHROMA_DIR=/data/chroma
+   CARGAR_KB_AL_ARRANCAR=1
+   ```
+
+5. **Ctrl+K** → **New Volume**, a `chatbot-api`, **Mount path:** `/data/chroma`
+6. **Apply N changes**. Si Deployments está vacío, **Deploy**.
+   Espera **Success** / **Online**. *Unexposed* es correcto.
 
 ### 4.4 Caja `nginx` (la puerta)
 
-1. **+ New** → **GitHub Repo** → el mismo repo.
-2. **Settings:**
-   - Nombre: `nginx`
-   - Branch: la misma.
-   - **Root Directory:** vacío / `/`
-   - **Dockerfile path:** `deploy/nginx/Dockerfile`
-3. **Variables:**
+Puedes crearla **mientras** `chatbot-api` está en BUILDING.
 
-```
-CHATBOT_UPSTREAM=http://chatbot-api.railway.internal:8000
-TICKETS_UPSTREAM=http://ticket-service.railway.internal:8001
-```
+1. **+** → **GitHub Repo** → el mismo repo.
+2. Nombre: `nginx`.
+3. **Settings:**
+   - **Branch:** `cursor/demo-api-same-origin-2754`
+   - **Root Directory:** vacío (no pulses **Add Root Directory**)
+   - **Builder:** **Dockerfile**
+   - **Dockerfile Path:** `deploy/nginx/Dockerfile`
+   - **Wait for CI** apagado
+4. **Raw Editor:**
 
-4. **Settings → Networking → Generate Domain**.  
-   Te da algo como `https://chatbot-ctic-production.up.railway.app`.
-5. Copia esa URL.
-6. En la caja **chatbot-api** → Variables, añade:
+   ```
+   CHATBOT_UPSTREAM=http://chatbot-api.railway.internal:8000
+   TICKETS_UPSTREAM=http://ticket-service.railway.internal:8001
+   ```
 
-```
-PUBLIC_APP_URL=https://TU-URL.up.railway.app
-```
+5. **Apply**, luego **Deploy** si Deployments está vacío.
+6. Cuando `nginx` esté en marcha: **Settings → Networking → Generate Domain**.
+   Copia la URL `https://….up.railway.app` (sin barra al final).
+7. En **chatbot-api** → **Variables** → **+ New Variable** → **Add**:
+   - `PUBLIC_APP_URL` = esa URL
+   Luego **Apply**. Railway redespliega `chatbot-api` (más corto que el
+   primer build).
 
-   (sin barra al final). Guarda: Railway vuelve a desplegar **chatbot-api**.
-
-7. Si en Networking te pide **puerto**, usa el que Railway asigne (`PORT`) o
-   **80**. Nuestra puerta escucha los dos.
+Hasta que `chatbot-api` esté **Online**, `nginx` puede mostrar 502; es
+normal. Recarga un par de minutos después.
 
 ---
 
