@@ -300,8 +300,10 @@ Puedes crearla **mientras** `chatbot-api` está en BUILDING.
 2. Nombre: `nginx`.
 3. **Settings:**
    - **Branch:** `cursor/demo-api-same-origin-2754`
-   - **Root Directory:** vacío (no pulses **Add Root Directory**)
-   - **Builder:** **Dockerfile**
+   - **Root Directory:** vacío (**no** pulses **Add Root Directory**)
+   - En el menú **derecho** pulsa **Build** (no está en Source).
+     Vacía *Filter Settings* si escribiste algo.
+   - **Builder:** **Dockerfile** (no Railpack)
    - **Dockerfile Path:** `deploy/nginx/Dockerfile`
    - **Wait for CI** apagado
 4. **Raw Editor:**
