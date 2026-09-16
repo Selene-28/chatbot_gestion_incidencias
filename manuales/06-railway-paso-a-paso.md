@@ -262,7 +262,10 @@ acortar. Mientras construye, puedes armar `nginx` (paso 4.4).
    - Baja (no escribas en *Filter Settings*) hasta **Replica Limits** →
      **Memory**. Pon **al menos 2 GB**. **8 GB está bien** (es un tope, no
      un gasto fijo). No bajes de 2 GB. **CPU** puede quedarse alto.
-4. **Variables** → **Raw Editor**, pega todo, guarda:
+4. **Variables.** Si aparece *Suggested Variables* (`UV_LINK_MODE`,
+   `HF_HOME`, etc.), puedes pulsar **Add** o ignorarlas: ya van en la
+   imagen. **No sustituyen** las claves. Luego **Raw Editor**, pega todo,
+   guarda:
 
    ```
    TZ=America/Lima
