@@ -27,5 +27,5 @@ done
 echo "[entrypoint] Aplicando migraciones (alembic upgrade head)..."
 alembic upgrade head
 
-echo "[entrypoint] Iniciando uvicorn en 0.0.0.0:8001..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8001
+echo "[entrypoint] Iniciando uvicorn en [::]:8001 (IPv6; red privada de Railway)..."
+exec uvicorn app.main:app --host :: --port 8001
