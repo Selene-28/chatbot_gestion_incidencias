@@ -320,9 +320,46 @@ Puedes crearla **mientras** `chatbot-api` está en BUILDING.
    barra al final).
    Si no hay dominio: deja puerto **8080** → **Generate Domain**.
 7. En **chatbot-api** → **Variables** → **+ New Variable** → **Add**:
-   - `PUBLIC_APP_URL` = esa URL
+   - `PUBLIC_APP_URL` = esa URL de **nginx**
+     (ejemplo: `https://nginx-production-e84c.up.railway.app`)
    Luego **Apply**. Railway redespliega `chatbot-api` (más corto que el
    primer build).
+
+### 4.5 Dominios públicos de `chatbot-api` y `ticket-service`
+
+El chat y el panel pasan por **nginx**. Nginx necesita una URL `https://…up.railway.app`
+de cada API (el cable interno de Railway no alcanza el puerto público).
+
+1. Caja **chatbot-api** → **Settings** → menú derecho **Networking**.
+2. Si ves un recuadro amarillo *Networking settings temporarily unavailable*:
+   **ignóralo**. Pulsa la **X** del recuadro de la derecha si molesta.
+   No pulses **Generate Domain** otra vez.
+3. Debajo de **Public Networking** ya debe aparecer algo como
+   `chatbot-api-production-14c9.up.railway.app` → **Port 8080**.
+   Esa **es** la URL. Cópiala.
+4. Caja **ticket-service** → **Settings** → **Networking**.
+   Si **no** hay dominio: deja puerto **8080** → **Generate Domain** **una sola vez**.
+   Espera 10–20 s y copia el `….up.railway.app` que aparezca.
+5. Caja **nginx** → **Variables** → **Raw Editor**. Deja **solo** estas dos líneas
+   (cambia la de tickets por la tuya; sin barra al final):
+
+   ```
+   CHATBOT_UPSTREAM=https://chatbot-api-production-14c9.up.railway.app
+   TICKETS_UPSTREAM=https://ticket-service-production-XXXX.up.railway.app
+   ```
+
+6. **Apply**. Espera a que `nginx` vuelva a **Online**.
+7. En **chatbot-api** → **Variables**, cambia (o agrega) también:
+
+   ```
+   TICKETS_API_BASE_URL=https://ticket-service-production-XXXX.up.railway.app
+   ```
+
+   (la misma URL de tickets del paso 5, con `https://`). **Apply**.
+
+Hasta que `chatbot-api` termine de **Building** y quede **Online** (15–25 min
+la primera vez), `/healthz` de esa URL puede decir *Application failed to
+respond*. Eso no se arregla generando otro dominio.
 
 Si `nginx` pasa a **Crashed** después de **Online**: no es la RAM (8 GB
 está bien). Estás en **Scale**; ve a **Deployments → View logs**. Suele
@@ -386,7 +423,9 @@ lo cubre).
 | Duda **Apply** vs **Deploy** | Primero **Apply N changes**. Si Deployments está vacío, entonces sí **Deploy** |
 | `chatbot-api` *Suggested Variables* (`UV_*`, `HF_HOME`) | Opcional **Add**. Las claves van en **Raw Editor** (bloque del paso 4.3) |
 | Build rojo en `chatbot-api` | Espera; si es RAM, súbela a 2 GB |
-| 502 / mantenimiento | Logs de `mysql` y `chatbot-api`; nombres de servicio exactos |
+| Aviso amarillo *Networking settings temporarily unavailable* | Ignóralo. La URL ya está en **Public Networking**. No pulses **Generate Domain** otra vez |
+| *No veo ninguna URL* en chatbot-api | Sí está: el texto `….up.railway.app` → Port 8080. Cópialo; no esperes un recuadro extra |
+| 502 *Application failed to respond* en `….up.railway.app/healthz` | Espera **Online** (no Building). Si ya está Online, **Redeploy** de esa caja. No crees otro dominio |
 | Chat “no se pudo conectar” | `PUBLIC_APP_URL` y `ALLOWED_ORIGINS` con `https://` |
 | Panel: credenciales inválidas | `SEED_ADMIN_PASSWORD` es la del **primer** arranque. Si la cambiaste después, no se actualiza sola |
 | FAQ no responde | `CARGAR_KB_AL_ARRANCAR=1` y logs de `chatbot-api` con “Cargando base de conocimiento” |
