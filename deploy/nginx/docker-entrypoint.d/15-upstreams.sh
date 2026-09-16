@@ -77,10 +77,12 @@ server {
 }
 EOF
 
+# proxy_pass fijo (sin $variable): nginx resuelve el hostname del mesh al arrancar.
+# Las IPs de getent no enrutan; $host del visitante rompe el Host interno.
 sed -i \
   -e "s|^resolver .*|resolver ${NS_LIST} ${RESOLVER_OPTS};|" \
-  -e "s|^set \$upstream_chatbot .*|set \$upstream_chatbot ${CHATBOT_UPSTREAM};|" \
-  -e "s|^set \$upstream_tickets .*|set \$upstream_tickets ${TICKETS_UPSTREAM};|" \
+  -e "s|proxy_pass \$upstream_chatbot;|proxy_pass ${CHATBOT_UPSTREAM};|g" \
+  -e "s|proxy_pass \$upstream_tickets;|proxy_pass ${TICKETS_UPSTREAM};|g" \
   /etc/nginx/conf.d/_app.inc
 
 nginx -t

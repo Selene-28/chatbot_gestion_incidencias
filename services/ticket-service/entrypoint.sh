@@ -28,4 +28,8 @@ echo "[entrypoint] Aplicando migraciones (alembic upgrade head)..."
 alembic upgrade head
 
 echo "[entrypoint] Iniciando uvicorn en [::]:${PORT:-8001}..."
+if [ -n "${PORT:-}" ] && [ "${PORT}" != "8001" ]; then
+  echo "[entrypoint] también en [::]:8001 (compatibilidad)"
+  uvicorn app.main:app --host :: --port 8001 &
+fi
 exec uvicorn app.main:app --host :: --port "${PORT:-8001}"
