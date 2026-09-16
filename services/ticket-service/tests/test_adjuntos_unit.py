@@ -12,6 +12,7 @@ from app.services.adjuntos import (
     detectar_tipo,
     generar_adjunto_id,
     nombre_archivo_almacenado,
+    resolver_directorio_uploads,
     ruta_adjunto_segura,
     sanear_nombre_original,
     validar_archivo,
@@ -61,14 +62,14 @@ def test_validar_archivo_rechaza_extension_enganosa() -> None:
         validar_archivo(b"no soy un png de verdad")
 
 
-def test_validar_archivo_rechaza_mayor_a_5mb() -> None:
-    grande = b"\xff\xd8\xff" + b"\x00" * TAMANO_MAXIMO_BYTES  # 5 MB + 3 bytes
+def test_validar_archivo_rechaza_mayor_al_maximo() -> None:
+    grande = b"\xff\xd8\xff" + b"\x00" * TAMANO_MAXIMO_BYTES  # tope + 3 bytes
     with pytest.raises(ValidationAppError) as excinfo:
         validar_archivo(grande)
-    assert any("5 MB" in e.description for e in excinfo.value.errors)
+    assert any("15 MB" in e.description for e in excinfo.value.errors)
 
 
-def test_validar_archivo_acepta_exactamente_5mb() -> None:
+def test_validar_archivo_acepta_exactamente_el_maximo() -> None:
     exacto = b"\xff\xd8\xff" + b"\x00" * (TAMANO_MAXIMO_BYTES - 3)
     assert validar_archivo(exacto) == (".jpg", "image/jpeg")
 
@@ -140,3 +141,20 @@ def test_ruta_adjunto_segura_404_si_falta_archivo(
     adjunto = SimpleNamespace(ruta_almacenada=str(tmp_path / "no-existe.png"))
     with pytest.raises(NotFoundError):
         ruta_adjunto_segura(adjunto)
+
+
+def test_resolver_directorio_uploads_usa_el_primero_escribible(tmp_path: Path) -> None:
+    bueno = tmp_path / "ok"
+    assert resolver_directorio_uploads(bueno) == bueno.resolve()
+
+
+def test_resolver_directorio_uploads_salta_el_que_no_escribe(tmp_path: Path) -> None:
+    bloqueado = tmp_path / "bloqueado"
+    bloqueado.mkdir()
+    bloqueado.chmod(0o555)
+    fallback = tmp_path / "fallback"
+    try:
+        elegido = resolver_directorio_uploads(bloqueado, fallback)
+    finally:
+        bloqueado.chmod(0o755)
+    assert elegido == fallback.resolve()

@@ -36,7 +36,7 @@ gantt
 | # | Tarea | Especificación | Criterio de aceptación |
 |---|---|---|---|
 | 2.1 | API-01 (registrar) con generación transaccional de código RN-01 + Idempotency-Key | `prd/04` §3, `prd/01` RN-01 | Test: 100 registros concurrentes → códigos únicos y correlativos; reintento con misma key no duplica |
-| 2.2 | API-01b adjuntos (validación MIME real, ≤5 MB) + job de purga de huérfanos | `prd/01` RF-13 | Test: PDF válido pasa; `.exe` renombrado a `.png` es rechazado |
+| 2.2 | API-01b adjuntos (validación MIME real, ≤15 MB, hasta 8 archivos) + job de purga de huérfanos | `prd/01` RF-13 | Test: PDF válido pasa; `.exe` renombrado a `.png` es rechazado |
 | 2.3 ∥ | API-02 (consulta por código y por correo) con RN-03 | `prd/04` §3 | Test: correo ajeno → 403; datos coinciden con BD (QA-02) |
 | 2.4 ∥ | API-03 (escalar) + máquina de estados de ticket RN-02 + `ticket_historial` | `prd/02` §6 | Test: transiciones inválidas → 409; historial completo (QA-05) |
 | 2.5 | Login staff (Argon2 + JWT) y panel base: listado/filtrado de tickets, cambio de estado, asignación | `prd/04` §3 panel | Técnico autenticado gestiona tickets; usuario sin rol no accede |

@@ -104,6 +104,19 @@ def test_sin_key_no_disponible_y_disabled():
     assert llm.estado_llm() == "disabled"
 
 
+def test_placeholder_cambiar_es_disabled(monkeypatch):
+    """El valor de .env.example no debe activar el cliente de Claude."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "cambiar")
+    get_settings.cache_clear()
+    llm.reset_estado()
+    try:
+        assert llm.llm_disponible() is False
+        assert llm.estado_llm() == "disabled"
+    finally:
+        llm.reset_estado()
+        get_settings.cache_clear()
+
+
 async def test_clasificar_sin_key_lanza_llm_no_disponible():
     llm.reset_estado()
     with pytest.raises(llm.LlmNoDisponible):

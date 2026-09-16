@@ -9,20 +9,21 @@ resolver 127.0.0.11 valid=10s ipv6=off;
 set $upstream_chatbot http://chatbot-api:8000;
 set $upstream_tickets http://ticket-service:8001;
 
-# Adjuntos ≤ 5 MB (margen para overhead multipart)
-client_max_body_size 6m;
+# Adjuntos ≤ 15 MB (margen para overhead multipart)
+client_max_body_size 16m;
 
-# Timeouts de proxy
-proxy_connect_timeout 30s;
-proxy_send_timeout    30s;
-proxy_read_timeout    30s;
+# Timeouts de proxy (90 s cubre subidas de adjuntos de hasta 15 MB)
+proxy_connect_timeout 10s;
+proxy_send_timeout    90s;
+proxy_read_timeout    90s;
 
 # Cabeceras estándar hacia los upstreams
-proxy_set_header Host              $host;
+proxy_set_header Host              $proxy_host;
 proxy_set_header X-Real-IP         $remote_addr;
 proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-Host  $host;
+proxy_ssl_server_name on;
 
 # ---------- API ----------
 location /api/ {
@@ -33,7 +34,7 @@ location /api/ {
 
     # chatbot-api (proxy_pass sin URI: conserva la URI completa)
     # Endpoint SSE de larga vida: /api/chat/stream (handoff en tiempo real).
-    location /api/chat/ {
+    location /api/chat {
         proxy_buffering off;          # entrega inmediata de eventos SSE
         proxy_cache off;
         proxy_set_header Connection "";  # keepalive HTTP/1.1 hacia el upstream
@@ -73,7 +74,23 @@ location /panel {
     proxy_pass $upstream_tickets;
 }
 
-# ---------- Monitoreo simple ----------
+# ---------- Portada (demo FIIS) y monitoreo ----------
+location = / {
+    root /usr/share/nginx/html/widget;
+    try_files /demo.html =404;
+}
+
+location = /readyz {
+    default_type text/plain;
+    return 200 "ok\n";
+}
+
+location = /__upstreams {
+    alias /usr/share/nginx/html/widget/upstreams.txt;
+    default_type text/plain;
+    charset utf-8;
+}
+
 location /healthz {
     proxy_pass $upstream_chatbot;
 }
@@ -88,6 +105,14 @@ location /widget/ {
 # Página de prueba del widget
 location = /demo.html {
     root /usr/share/nginx/html/widget;
+}
+
+# Compatibilidad si demo.html se abre con src="./widget.js" (resuelve a /widget.js)
+location = /widget.js {
+    alias /usr/share/nginx/html/widget/widget.js;
+}
+location = /widget.css {
+    alias /usr/share/nginx/html/widget/widget.css;
 }
 
 # ---------- Página de mantenimiento ----------

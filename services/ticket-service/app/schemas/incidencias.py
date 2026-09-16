@@ -1,10 +1,11 @@
 """Schemas de request de incidencias (API-01, API-03) con validaciones de prd/01 §4."""
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.models import AREAS, ORIGENES, PRIORIDADES
 from app.schemas import comunes
+from app.services.adjuntos import MAX_ADJUNTOS_POR_TICKET
 
 
 def _error(codigo: str, mensaje: str) -> PydanticCustomError:
@@ -27,6 +28,24 @@ class IncidenciaCreate(BaseModel):
     origen: str = "chatbot"
     conversacion_codigo: str | None = Field(default=None, alias="conversacionCodigo")
     adjunto_id: str | None = Field(default=None, alias="adjuntoId")
+    adjunto_ids: list[str] | None = Field(default=None, alias="adjuntoIds")
+
+    @model_validator(mode="after")
+    def _unir_adjuntos(self) -> "IncidenciaCreate":
+        ids: list[str] = list(self.adjunto_ids or [])
+        if self.adjunto_id and self.adjunto_id not in ids:
+            ids.insert(0, self.adjunto_id)
+        unicos: list[str] = []
+        for adjunto_id in ids:
+            if adjunto_id and adjunto_id not in unicos:
+                unicos.append(adjunto_id)
+        if len(unicos) > MAX_ADJUNTOS_POR_TICKET:
+            raise _error(
+                "adjuntos_excedidos",
+                f"Puedes adjuntar como máximo {MAX_ADJUNTOS_POR_TICKET} archivos.",
+            )
+        self.adjunto_ids = unicos or None
+        return self
 
     @field_validator("nombre")
     @classmethod

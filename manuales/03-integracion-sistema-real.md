@@ -115,8 +115,8 @@ Reglas de negocio esperadas:
 
 `POST /api/incidencias/adjuntos` — auth `X-Api-Key`, `multipart/form-data`, campo `file`
 
-- Validar el **tipo real** del archivo: JPG/JPEG/PNG/PDF, tamaño **≤ 5 MB** (RF-13).
-- Devolver un identificador que luego se envía como `adjuntoId` en API-01.
+- Validar el **tipo real** del archivo: JPG/JPEG/PNG/PDF, tamaño **≤ 15 MB** (RF-13).
+- Devolver un identificador que luego se envía como `adjuntoId` / `adjuntoIds` en API-01 (hasta 8 archivos por incidencia).
 
 **Response 201:**
 ```json

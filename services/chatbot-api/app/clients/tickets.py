@@ -28,6 +28,7 @@ from app.dialogo.textos import DISCULPA_TICKETS_CAIDO
 logger = logging.getLogger("app.clients.tickets")
 
 TIMEOUT_S = 5.0
+TIMEOUT_SUBIDA_S = 60.0
 REINTENTOS_GET = 1
 
 
@@ -68,10 +69,13 @@ class TicketsClient:
         """Ejecuta la petición (con 1 reintento solo para GET) y valida el envelope."""
         intentos = 1 + (REINTENTOS_GET if metodo == "GET" else 0)
         ultima_exc: Exception | None = None
+        timeout = self._timeout
+        if files:
+            timeout = max(timeout, TIMEOUT_SUBIDA_S)
         for intento in range(intentos):
             try:
                 async with httpx.AsyncClient(
-                    base_url=self._base_url, timeout=self._timeout, transport=self._transport
+                    base_url=self._base_url, timeout=timeout, transport=self._transport
                 ) as client:
                     respuesta = await client.request(
                         metodo,

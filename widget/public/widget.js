@@ -27,7 +27,7 @@
   const CSS_URL = script && script.src ? new URL("widget.css", script.src).href : "widget.css";
 
   const STORAGE_KEY = "cbctic_sesion_v1";
-  const MAX_ADJUNTO_BYTES = 5 * 1024 * 1024; // 5 MB (RF-13)
+  const MAX_ADJUNTO_BYTES = 15 * 1024 * 1024; // 15 MB (RF-13)
   const EXTENSIONES_PERMITIDAS = [".jpg", ".jpeg", ".png", ".pdf"];
   const ACCEPT_ADJUNTO = ".jpg,.jpeg,.png,.pdf";
 
@@ -55,14 +55,15 @@
     sesionCerrada: "Esta conversación fue cerrada.",
     sesionExpirada: "Tu sesión expiró. Hemos iniciado una nueva conversación.",
     nuevaConversacionBtn: "Iniciar nueva conversación",
-    adjuntoSeleccionar: "Adjuntar archivo",
+    adjuntoSeleccionar: "Adjuntar archivos",
     adjuntoOmitir: "Omitir",
-    adjuntoAyuda: "Formatos: JPG, JPEG, PNG o PDF · máximo 5 MB",
+    adjuntoAyuda: "Formatos: JPG, JPEG, PNG o PDF · hasta 8 archivos (p. ej. 2 PDF y varias fotos) · 15 MB c/u",
     adjuntoInvalidoTipo: "Formato no permitido. Solo se aceptan archivos JPG, JPEG, PNG o PDF.",
-    adjuntoInvalidoTam: "El archivo supera el tamaño máximo de 5 MB.",
+    adjuntoInvalidoTam: "El archivo supera el tamaño máximo de 15 MB.",
+    adjuntoMaximo: "Puedes adjuntar como máximo 8 archivos.",
     adjuntoSubiendo: "Subiendo archivo…",
     adjuntoError: "No se pudo subir el archivo. Por favor, inténtalo nuevamente.",
-    adjuntoInput: "Seleccionar archivo de evidencia (JPG, PNG o PDF, máximo 5 MB)",
+    adjuntoInput: "Seleccionar archivos de evidencia (JPG, PNG o PDF, máximo 8, 15 MB c/u)",
     encuestaAyuda: "Toca una estrella para calificar (1 a 5).",
     calificarCon: function (n) {
       return "Calificar con " + n + (n === 1 ? " estrella" : " estrellas") + " de 5";
@@ -428,6 +429,7 @@
     const entradaArchivo = document.createElement("input");
     entradaArchivo.type = "file";
     entradaArchivo.accept = ACCEPT_ADJUNTO;
+    entradaArchivo.multiple = true;
     entradaArchivo.className = "cbctic-adjunto-input";
     entradaArchivo.setAttribute("aria-label", TXT.adjuntoInput);
 
@@ -439,48 +441,70 @@
       enviarMensaje({ opcionId: "__omitir__" }, TXT.adjuntoOmitir);
     });
     fila.appendChild(bSeleccionar);
-    fila.appendChild(bOmitir);
+    // El flujo ya manda Omitir/Continuar en item.opciones; no duplicar el botón.
+    const opcionesAdjunto = Array.isArray(item.opciones) ? item.opciones : [];
+    if (!opcionesAdjunto.length) {
+      fila.appendChild(bOmitir);
+    }
 
     const ayuda = el("div", "cbctic-adjunto-ayuda", TXT.adjuntoAyuda);
     const aviso = el("div", "cbctic-adjunto-aviso", "");
     aviso.hidden = true;
 
     entradaArchivo.addEventListener("change", async function () {
-      const archivo = entradaArchivo.files && entradaArchivo.files[0];
-      if (!archivo) return;
+      const seleccion = Array.prototype.slice.call(entradaArchivo.files || []);
+      if (!seleccion.length) return;
       aviso.hidden = true;
       aviso.classList.remove("cbctic-adjunto-error");
 
-      const nombre = archivo.name.toLowerCase();
-      const extensionValida = EXTENSIONES_PERMITIDAS.some(function (ext) {
-        return nombre.endsWith(ext);
-      });
-      if (!extensionValida) {
-        aviso.textContent = TXT.adjuntoInvalidoTipo;
-        aviso.classList.add("cbctic-adjunto-error");
-        aviso.hidden = false;
-        entradaArchivo.value = "";
-        return;
+      const validos = [];
+      for (let i = 0; i < seleccion.length; i++) {
+        const archivo = seleccion[i];
+        const nombre = archivo.name.toLowerCase();
+        const extensionValida = EXTENSIONES_PERMITIDAS.some(function (ext) {
+          return nombre.endsWith(ext);
+        });
+        if (!extensionValida) {
+          aviso.textContent = TXT.adjuntoInvalidoTipo;
+          aviso.classList.add("cbctic-adjunto-error");
+          aviso.hidden = false;
+          entradaArchivo.value = "";
+          return;
+        }
+        if (archivo.size > MAX_ADJUNTO_BYTES) {
+          aviso.textContent = TXT.adjuntoInvalidoTam;
+          aviso.classList.add("cbctic-adjunto-error");
+          aviso.hidden = false;
+          entradaArchivo.value = "";
+          return;
+        }
+        validos.push(archivo);
       }
-      if (archivo.size > MAX_ADJUNTO_BYTES) {
-        aviso.textContent = TXT.adjuntoInvalidoTam;
+      if (validos.length > 8) {
+        aviso.textContent = TXT.adjuntoMaximo;
         aviso.classList.add("cbctic-adjunto-error");
         aviso.hidden = false;
-        entradaArchivo.value = "";
-        return;
+        validos.length = 8;
       }
 
       bSeleccionar.disabled = true;
       bOmitir.disabled = true;
-      aviso.textContent = TXT.adjuntoSubiendo;
-      aviso.hidden = false;
       try {
-        const data = await apiSubirAdjunto(archivo);
+        for (let i = 0; i < validos.length; i++) {
+          const archivo = validos[i];
+          aviso.classList.remove("cbctic-adjunto-error");
+          aviso.textContent =
+            validos.length > 1
+              ? TXT.adjuntoSubiendo + " (" + (i + 1) + "/" + validos.length + ")"
+              : TXT.adjuntoSubiendo;
+          aviso.hidden = false;
+          const data = await apiSubirAdjunto(archivo);
+          await enviarMensaje(
+            { opcionId: "__adjunto__", adjuntoId: data.adjuntoId },
+            "📎 " + (data.nombreOriginal || archivo.name)
+          );
+        }
         aviso.hidden = true;
-        enviarMensaje(
-          { opcionId: "__adjunto__", adjuntoId: data.adjuntoId },
-          "📎 " + (data.nombreOriginal || archivo.name)
-        );
       } catch (err) {
         console.error("[cbctic] Error al subir adjunto:", err);
         aviso.textContent =

@@ -128,11 +128,55 @@ async def test_f02_adjunto_via_widget(bot, conv, deps, tickets):
     await _decir(bot, conv, deps, "El wifi del pabellón B no funciona.")
     mensajes = await _pulsar(bot, conv, deps, "prio_alta")
     assert mensajes[0].tipo == "adjunto"
+    assert "15 MB" in mensajes[0].texto
+    assert "8 archivos" in mensajes[0].texto
     assert any(o.id == "omitir" for o in mensajes[0].opciones)
     await _pulsar(bot, conv, deps, OPCION_ADJUNTO, adj="adj_9f31")
+    assert conv.flujo_contexto["paso"] == "adjunto"
+    await _pulsar(bot, conv, deps, "continuar")
     await _pulsar(bot, conv, deps, "confirmar")
     payload, _ = tickets.registros[0]
     assert payload["adjuntoId"] == "adj_9f31"
+    assert payload["adjuntoIds"] == ["adj_9f31"]
+
+
+async def test_f02_varios_adjuntos_pdf_y_fotos(bot, conv, deps, tickets):
+    conv.usuario_nombre = "Ana"
+    conv.usuario_correo = "ana@unac.edu.pe"
+    await _pulsar(bot, conv, deps, "registrar_incidencia")
+    await _decir(bot, conv, deps, "2021012345")
+    await _pulsar(bot, conv, deps, "escuela_sistemas")
+    await _pulsar(bot, conv, deps, "cat_1")
+    await _decir(bot, conv, deps, "El wifi del pabellón B no funciona.")
+    await _pulsar(bot, conv, deps, "prio_alta")
+    ids = ["adj_pdf1aa", "adj_jpg1aa", "adj_jpg2aa", "adj_png3aa", "adj_pdf2aa"]
+    for adj_id in ids:
+        mensajes = await _pulsar(bot, conv, deps, OPCION_ADJUNTO, adj=adj_id)
+        assert conv.flujo_contexto["paso"] == "adjunto"
+        assert mensajes[0].tipo == "adjunto"
+    assert "5 archivo" in mensajes[0].texto
+    assert any(o.id == "continuar" for o in mensajes[0].opciones)
+    await _pulsar(bot, conv, deps, "continuar")
+    await _pulsar(bot, conv, deps, "confirmar")
+    payload, _ = tickets.registros[0]
+    assert payload["adjuntoId"] == ids[0]
+    assert payload["adjuntoIds"] == ids
+
+
+async def test_f02_rechaza_noveno_adjunto(bot, conv, deps):
+    conv.usuario_nombre = "Ana"
+    conv.usuario_correo = "ana@unac.edu.pe"
+    await _pulsar(bot, conv, deps, "registrar_incidencia")
+    await _decir(bot, conv, deps, "2021012345")
+    await _pulsar(bot, conv, deps, "escuela_sistemas")
+    await _pulsar(bot, conv, deps, "cat_1")
+    await _decir(bot, conv, deps, "El wifi del pabellón B no funciona.")
+    await _pulsar(bot, conv, deps, "prio_alta")
+    for i in range(8):
+        await _pulsar(bot, conv, deps, OPCION_ADJUNTO, adj=f"adj_{i:08d}")
+    mensajes = await _pulsar(bot, conv, deps, OPCION_ADJUNTO, adj="adj_99999999")
+    assert "máximo" in mensajes[0].texto.lower()
+    assert conv.flujo_contexto["datos"]["adjunto_ids"] == [f"adj_{i:08d}" for i in range(8)]
 
 
 async def test_f02_error_remoto_ofrece_reintentar_sin_perder_contexto(

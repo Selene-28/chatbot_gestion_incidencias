@@ -49,9 +49,10 @@ Tipos de `MensajeBot` renderizados:
 - **`opciones`** — botones tipo píldora; al hacer clic se envía el `opcionId`,
   la elección se muestra como burbuja del usuario y todos los controles
   interactivos anteriores quedan deshabilitados.
-- **`adjunto`** — tarjeta con «📎 Adjuntar archivo» (input `accept=".jpg,.jpeg,.png,.pdf"`,
-  validación en cliente de extensión y tamaño ≤ 5 MB según RF-13) y botón
-  «Omitir». Al subir con éxito envía `{opcionId:"__adjunto__", adjuntoId}`.
+- **`adjunto`** — tarjeta con «📎 Adjuntar archivos» (input `multiple`,
+  `accept=".jpg,.jpeg,.png,.pdf"`, validación en cliente de extensión y tamaño
+  ≤ 15 MB según RF-13; hasta 8 archivos por incidencia) y botón «Omitir».
+  Al subir con éxito envía `{opcionId:"__adjunto__", adjuntoId}` por cada archivo.
 - **`encuesta`** — 5 estrellas ★ clicables (RF-08); la estrella *n* envía
   `opcionId:"calif_n"` y se muestra la elección como `★★★☆☆ (3/5)`.
 - **`handoff`** — banner distintivo ámbar con ícono 🧑‍💻 (RF-06). Mientras

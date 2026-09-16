@@ -1,0 +1,63 @@
+# Referencia de los 4 servicios en Railway (no se ejecuta con `docker compose`).
+# Railway NO corre Compose: cada bloque de `services:` se crea a mano en el panel.
+# Guía: manuales/06-railway-paso-a-paso.md
+#
+# Nombres EXACTOS de los servicios en Railway (minúsculas):
+#   mysql, chatbot-api, ticket-service, nginx
+
+name: chatbot-ctic
+
+services:
+  mysql:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      DB_CHATBOT_PASSWORD: ${DB_CHATBOT_PASSWORD}
+      DB_TICKETS_PASSWORD: ${DB_TICKETS_PASSWORD}
+      TZ: America/Lima
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  chatbot-api:
+    build: ./services/chatbot-api
+    environment:
+      DB_URL: mysql+asyncmy://chatbot:${DB_CHATBOT_PASSWORD}@mysql.railway.internal:3306/chatbot_db
+      TICKETS_API_BASE_URL: http://ticket-service.railway.internal:8001
+      TICKETS_API_KEY: ${TICKETS_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      CHROMA_DIR: /data/chroma
+      CARGAR_KB_AL_ARRANCAR: "1"
+      TZ: America/Lima
+    volumes:
+      - chroma_data:/data/chroma
+
+  ticket-service:
+    build: ./services/ticket-service
+    environment:
+      DB_URL: mysql+asyncmy://tickets:${DB_TICKETS_PASSWORD}@mysql.railway.internal:3306/tickets_db
+      TICKETS_API_KEY: ${TICKETS_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      UPLOADS_DIR: /data/uploads
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      SEED_TECNICO_PASSWORD: ${SEED_TECNICO_PASSWORD}
+      TZ: America/Lima
+    volumes:
+      - uploads:/data/uploads
+
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    environment:
+      CHATBOT_UPSTREAM: http://chatbot-api.railway.internal:8000
+      TICKETS_UPSTREAM: http://ticket-service.railway.internal:8001
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
+  chroma_data:
+  uploads:

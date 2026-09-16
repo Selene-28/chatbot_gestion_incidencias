@@ -6,6 +6,7 @@ Nota: este endpoint es de infraestructura y NO usa el envelope estándar.
 from fastapi import APIRouter
 
 from app.core.db import check_db
+from app.core.mysql_url import diagnostico_dns, ultimo_error_mysql
 from app.ia import llm
 
 router = APIRouter(tags=["infraestructura"])
@@ -15,12 +16,18 @@ router = APIRouter(tags=["infraestructura"])
 async def healthz() -> dict[str, str]:
     """Devuelve 200 siempre que la app viva; reporta estado de dependencias.
 
-    llm: "configured" (key presente) | "degraded" (circuit breaker abierto,
-    prd/06 §6) | "disabled" (sin key configurada).
+    llm: "configured" (key real sk-ant-…) | "degraded" (circuit breaker abierto,
+    prd/06 §6) | "disabled" (sin key o placeholder de .env.example).
     """
     db_ok = await check_db(timeout=2.0)
-    return {
+    cuerpo: dict[str, str] = {
         "status": "ok",
         "db": "ok" if db_ok else "down",
         "llm": llm.estado_llm(),
     }
+    if not db_ok:
+        detalle = ultimo_error_mysql()
+        if detalle:
+            cuerpo["db_error"] = detalle
+        cuerpo["dns"] = diagnostico_dns()
+    return cuerpo

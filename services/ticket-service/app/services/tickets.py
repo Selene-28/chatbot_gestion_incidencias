@@ -14,8 +14,6 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
-from app.core.config import get_settings
 from app.core.errors import (
     ConflictError,
     ForbiddenError,
@@ -38,6 +36,7 @@ from app.models import (
     Usuario,
 )
 from app.schemas import comunes
+from app.services.adjuntos import MAX_ADJUNTOS_POR_TICKET, directorio_uploads
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +87,9 @@ async def registrar_incidencia(
     prioridad: str,
     origen: str,
     conversacion_codigo: str | None,
-    adjunto_id: str | None,
-    idempotency_key: str | None,
+    adjunto_id: str | None = None,
+    adjunto_ids: list[str] | None = None,
+    idempotency_key: str | None = None,
 ) -> Ticket:
     """Registra una incidencia con código único INC-AAAA-NNNN (RN-01).
 
@@ -148,8 +148,23 @@ async def registrar_incidencia(
         )
     )
 
-    if adjunto_id:
-        await _adjuntar_desde_staging(session, ticket_id=ticket.id, adjunto_id=adjunto_id)
+    ids: list[str] = list(adjunto_ids or [])
+    if adjunto_id and adjunto_id not in ids:
+        ids.insert(0, adjunto_id)
+    if len(ids) > MAX_ADJUNTOS_POR_TICKET:
+        raise ValidationAppError(
+            "Los datos enviados son inválidos.",
+            errors=[
+                {
+                    "field": "adjuntoIds",
+                    "description": (
+                        f"Puedes adjuntar como máximo {MAX_ADJUNTOS_POR_TICKET} archivos."
+                    ),
+                }
+            ],
+        )
+    for identificador in ids:
+        await _adjuntar_desde_staging(session, ticket_id=ticket.id, adjunto_id=identificador)
 
     if idempotency_key:
         session.add(IdempotencyKey(clave=idempotency_key, ticket_codigo=codigo))
@@ -262,7 +277,7 @@ async def _adjuntar_desde_staging(
                 {"field": "adjuntoId", "description": "El archivo adjunto ya no está disponible."}
             ],
         )
-    destino_dir = Path(get_settings().UPLOADS_DIR) / "tickets"
+    destino_dir = directorio_uploads() / "tickets"
     destino_dir.mkdir(parents=True, exist_ok=True)
     destino = destino_dir / origen.name
     shutil.move(str(origen), str(destino))

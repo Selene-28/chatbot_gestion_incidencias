@@ -34,6 +34,19 @@ def test_incidencia_valida_con_alias() -> None:
     assert payload.adjunto_id == "adj_9f31ab00"
 
 
+def test_incidencia_acepta_varios_adjunto_ids() -> None:
+    payload = IncidenciaCreate.model_validate(
+        {**INCIDENCIA_VALIDA, "adjuntoIds": ["adj_11111111", "adj_22222222"]}
+    )
+    assert payload.adjunto_ids == ["adj_9f31ab00", "adj_11111111", "adj_22222222"]
+
+
+def test_incidencia_rechaza_mas_de_ocho_adjuntos() -> None:
+    ids = [f"adj_{i:08d}" for i in range(9)]
+    with pytest.raises(ValidationError):
+        IncidenciaCreate.model_validate({**INCIDENCIA_VALIDA, "adjuntoId": None, "adjuntoIds": ids})
+
+
 def test_incidencia_defaults() -> None:
     datos = {k: v for k, v in INCIDENCIA_VALIDA.items() if k not in
              ("prioridad", "origen", "conversacionCodigo", "adjuntoId", "subcategoria")}
