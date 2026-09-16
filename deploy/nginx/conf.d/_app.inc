@@ -13,7 +13,7 @@ set $upstream_tickets http://ticket-service:8001;
 client_max_body_size 6m;
 
 # Timeouts de proxy
-proxy_connect_timeout 30s;
+proxy_connect_timeout 10s;
 proxy_send_timeout    30s;
 proxy_read_timeout    30s;
 
