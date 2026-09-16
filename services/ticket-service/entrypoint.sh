@@ -1,7 +1,6 @@
 #!/bin/sh
-# Entrypoint: MySQL → migraciones UNA vez → uvicorn.
-# En Railway el proxy público habla IPv4:8080 desde el segundo 1; el mesh
-# interno habla IPv6. Si el puerto se abre tarde, el visitante ve 502.
+# MySQL y migraciones no pueden bloquear el puerto: en Railway el 502
+# aparece si 8080 no atiende con la API real (/panel, /healthz, etc.).
 set -eu
 
 MAX_ATTEMPTS="${DB_WAIT_ATTEMPTS:-60}"
@@ -23,48 +22,6 @@ APP_PORT="${PORT:-$PRIV_PORT}"
 if [ "$on_railway" = "1" ]; then
   APP_PORT="${PORT:-8080}"
 fi
-
-abrir_placeholder() {
-  puerto="$1"
-  PORT_PLACEHOLDER="$puerto" python -c '
-import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
-port = int(os.environ["PORT_PLACEHOLDER"])
-
-class H(BaseHTTPRequestHandler):
-    def do_GET(self):
-        body = b"{\"status\":\"starting\"}"
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def do_HEAD(self):
-        self.send_response(200)
-        self.end_headers()
-
-    def log_message(self, *_args):
-        return
-
-print("[entrypoint] placeholder 0.0.0.0:%s" % port, flush=True)
-HTTPServer(("0.0.0.0", port), H).serve_forever()
-' &
-  echo $! > "/tmp/placeholder-${puerto}.pid"
-}
-
-cerrar_placeholder() {
-  puerto="$1"
-  pidfile="/tmp/placeholder-${puerto}.pid"
-  if [ -f "$pidfile" ]; then
-    pid="$(cat "$pidfile")"
-    kill "$pid" 2>/dev/null || true
-    sleep 1
-    kill -9 "$pid" 2>/dev/null || true
-    rm -f "$pidfile"
-  fi
-}
 
 escuchar_ipv6() {
   puerto="$1"
@@ -111,55 +68,52 @@ while True:
 ' &
 }
 
-if [ "$on_railway" = "1" ]; then
-  echo "[entrypoint] Railway detectado; PORT=${PORT:-unset} APP_PORT=${APP_PORT}"
-  abrir_placeholder "$APP_PORT"
-  escuchar_ipv6 "$APP_PORT"
-  if [ "$APP_PORT" != "$PRIV_PORT" ]; then
-    abrir_placeholder "$PRIV_PORT"
-    escuchar_ipv6 "$PRIV_PORT"
-  fi
-  if [ "$APP_PORT" != "8080" ]; then
-    abrir_placeholder 8080
-    escuchar_ipv6 8080
-  fi
+iniciar_uvicorn() {
+  puerto="$1"
+  echo "[entrypoint] uvicorn 0.0.0.0:${puerto}"
+  uvicorn app.main:app --host 0.0.0.0 --port "$puerto" \
+    --proxy-headers --forwarded-allow-ips='*' &
+}
+
+echo "[entrypoint] on_railway=${on_railway} PORT=${PORT:-unset} APP_PORT=${APP_PORT}"
+iniciar_uvicorn "$APP_PORT"
+MAIN_PID=$!
+escuchar_ipv6 "$APP_PORT"
+
+if [ "$on_railway" = "1" ] && [ "$APP_PORT" != "$PRIV_PORT" ]; then
+  iniciar_uvicorn "$PRIV_PORT"
+  escuchar_ipv6 "$PRIV_PORT"
+fi
+if [ "$on_railway" = "1" ] && [ "$APP_PORT" != "8080" ]; then
+  iniciar_uvicorn 8080
+  escuchar_ipv6 8080
 fi
 
-attempt=1
-until python -c "
+term() {
+  kill "$MAIN_PID" 2>/dev/null || true
+  wait "$MAIN_PID" 2>/dev/null || true
+  exit 0
+}
+trap term TERM INT
+
+(
+  attempt=1
+  until python -c "
 import sqlalchemy as sa
 from app.core.config import get_settings
 url = get_settings().DB_URL.replace('+asyncmy', '+pymysql')
 sa.create_engine(url, connect_args={'connect_timeout': 3}).connect().close()
 " 2>/dev/null; do
-  if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
-    echo "[entrypoint] ERROR: MySQL no aceptó conexiones tras ${MAX_ATTEMPTS} intentos" >&2
-    exit 1
-  fi
-  echo "[entrypoint] MySQL aún no está listo (intento ${attempt}/${MAX_ATTEMPTS}); reintentando en ${SLEEP_SECONDS}s..."
-  attempt=$((attempt + 1))
-  sleep "$SLEEP_SECONDS"
-done
+    if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
+      echo "[entrypoint] AVISO: MySQL no aceptó conexiones; la API sigue en ${APP_PORT}" >&2
+      exit 0
+    fi
+    echo "[entrypoint] MySQL aún no está listo (intento ${attempt}/${MAX_ATTEMPTS})..."
+    attempt=$((attempt + 1))
+    sleep "$SLEEP_SECONDS"
+  done
+  echo "[entrypoint] Aplicando migraciones (alembic upgrade head)..."
+  alembic upgrade head || echo "[entrypoint] AVISO: alembic falló" >&2
+) &
 
-echo "[entrypoint] Aplicando migraciones (alembic upgrade head)..."
-alembic upgrade head
-
-if [ "$on_railway" = "1" ]; then
-  cerrar_placeholder "$APP_PORT"
-  if [ "$APP_PORT" != "$PRIV_PORT" ]; then
-    cerrar_placeholder "$PRIV_PORT"
-    echo "[entrypoint] también en 0.0.0.0:${PRIV_PORT}"
-    uvicorn app.main:app --host 0.0.0.0 --port "$PRIV_PORT" --proxy-headers --forwarded-allow-ips='*' &
-  fi
-  if [ "$APP_PORT" != "8080" ]; then
-    cerrar_placeholder 8080
-    echo "[entrypoint] también en 0.0.0.0:8080 (dominio público Railway)"
-    uvicorn app.main:app --host 0.0.0.0 --port 8080 --proxy-headers --forwarded-allow-ips='*' &
-  fi
-elif [ -n "${PORT:-}" ] && [ "$APP_PORT" != "$PRIV_PORT" ]; then
-  echo "[entrypoint] también en 0.0.0.0:${PRIV_PORT}"
-  uvicorn app.main:app --host 0.0.0.0 --port "$PRIV_PORT" --proxy-headers --forwarded-allow-ips='*' &
-fi
-
-echo "[entrypoint] Iniciando uvicorn en 0.0.0.0:${APP_PORT}..."
-exec uvicorn app.main:app --host 0.0.0.0 --port "$APP_PORT" --proxy-headers --forwarded-allow-ips='*'
+wait "$MAIN_PID"
