@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import get_settings
+from app.core.mysql_url import url_mysql_railway
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,12 @@ DB_CHECK_TIMEOUT_S = 2.0
 @lru_cache
 def get_engine() -> AsyncEngine:
     """Crea (una sola vez) el engine async contra tickets_db."""
-    return create_async_engine(get_settings().DB_URL, pool_pre_ping=True, pool_recycle=3600)
+    return create_async_engine(
+        url_mysql_railway(get_settings().DB_URL),
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        connect_args={"connect_timeout": 10},
+    )
 
 
 @lru_cache

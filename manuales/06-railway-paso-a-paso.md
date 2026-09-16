@@ -427,7 +427,7 @@ lo cubre).
 | *No veo ninguna URL* en chatbot-api | Sí está: el texto `….up.railway.app` → Port 8080. Cópialo; no esperes un recuadro extra |
 | 502 *Application failed to respond* en `….up.railway.app/healthz` | Espera **Online** (no Building). Si ya está Online, **Redeploy** de esa caja. No crees otro dominio |
 | Chat “no se pudo conectar” | `PUBLIC_APP_URL` y `ALLOWED_ORIGINS` con `https://` |
-| Panel: credenciales inválidas | `SEED_ADMIN_PASSWORD` es la del **primer** arranque. Si la cambiaste después, no se actualiza sola |
+| Panel login: JSON `Ocurrió un error interno` o chat «No se pudo conectar» | Las APIs viven pero **no llegan a MySQL** (`/healthz` dice `"db":"down"`). Espera el deploy nuevo. Comprueba `DB_URL` con `mysql.railway.internal` (no `localhost`) |
 | FAQ no responde | `CARGAR_KB_AL_ARRANCAR=1` y logs de `chatbot-api` con “Cargando base de conocimiento” |
 
 ---

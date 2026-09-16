@@ -31,7 +31,8 @@ trap term TERM INT
   until python -c "
 import sqlalchemy as sa
 from app.core.config import get_settings
-url = get_settings().DB_URL.replace('+asyncmy', '+pymysql')
+from app.core.mysql_url import url_mysql_sync
+url = url_mysql_sync(get_settings().DB_URL)
 sa.create_engine(url, connect_args={'connect_timeout': 3}).connect().close()
 " 2>/dev/null; do
     if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then

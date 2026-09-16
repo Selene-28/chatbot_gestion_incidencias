@@ -10,17 +10,16 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
+from app.core.mysql_url import url_mysql_sync
+
 config = context.config
 
 DEFAULT_DB_URL = "mysql+asyncmy://chatbot:chatbot@localhost:3306/chatbot_db"
 
 
 def _sync_db_url() -> str:
-    """Lee DB_URL y la normaliza al driver síncrono pymysql."""
-    url = os.environ.get("DB_URL", DEFAULT_DB_URL)
-    return url.replace("mysql+asyncmy://", "mysql+pymysql://").replace(
-        "mysql+aiomysql://", "mysql+pymysql://"
-    )
+    """Lee DB_URL y la normaliza al driver síncrono pymysql (IPv6 en Railway)."""
+    return url_mysql_sync(os.environ.get("DB_URL", DEFAULT_DB_URL))
 
 
 # Migraciones escritas a mano con SQL explícito: no hay metadata objetivo

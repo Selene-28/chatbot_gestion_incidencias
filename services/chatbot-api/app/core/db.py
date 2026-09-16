@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import get_settings
+from app.core.mysql_url import url_mysql_railway
 
 logger = logging.getLogger("app.db")
 
@@ -25,9 +26,10 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         _engine = create_async_engine(
-            get_settings().DB_URL,
+            url_mysql_railway(get_settings().DB_URL),
             pool_pre_ping=True,
             pool_recycle=3600,
+            connect_args={"connect_timeout": 10},
         )
     return _engine
 

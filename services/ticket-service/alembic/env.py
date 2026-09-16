@@ -10,19 +10,16 @@ from sqlalchemy import create_engine, pool
 
 from alembic import context
 
+from app.core.mysql_url import url_mysql_sync
+
 config = context.config
 
 DEFAULT_DB_URL = "mysql+asyncmy://tickets:tickets@localhost:3306/tickets_db"
 
 
 def _sync_db_url() -> str:
-    """Convierte la DB_URL async (mysql+asyncmy) a una URL síncrona (mysql+pymysql)."""
-    url = os.environ.get("DB_URL", DEFAULT_DB_URL)
-    if "+asyncmy" in url:
-        return url.replace("+asyncmy", "+pymysql")
-    if url.startswith("mysql://"):
-        return url.replace("mysql://", "mysql+pymysql://", 1)
-    return url
+    """Convierte la DB_URL async a pymysql y resuelve IPv6 en Railway."""
+    return url_mysql_sync(os.environ.get("DB_URL", DEFAULT_DB_URL))
 
 
 # Migraciones escritas a mano (DDL del PRD): sin autogenerate ni metadata
