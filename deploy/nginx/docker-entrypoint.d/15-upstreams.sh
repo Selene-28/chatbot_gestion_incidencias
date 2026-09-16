@@ -1,13 +1,13 @@
 #!/bin/sh
 # Genera default.conf y ajusta upstreams SIN envsubst.
-# envsubst + $host / $$host rompe nginx en Railway (Crashed tras Online).
-set -eu
+set -u
 
 LISTEN_PORT="${PORT:-${LISTEN_PORT:-80}}"
 CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM:-http://chatbot-api:8000}"
 TICKETS_UPSTREAM="${TICKETS_UPSTREAM:-http://ticket-service:8001}"
+CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM%/}"
+TICKETS_UPSTREAM="${TICKETS_UPSTREAM%/}"
 
-# En Railway $PORT está definido: usar DNS privado aunque falten variables.
 if [ -n "${PORT:-}" ]; then
   case "$CHATBOT_UPSTREAM" in
     *railway.internal*) ;;
@@ -17,6 +17,8 @@ if [ -n "${PORT:-}" ]; then
     *railway.internal*) ;;
     *) TICKETS_UPSTREAM="http://ticket-service.railway.internal:8001" ;;
   esac
+  CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM%/}"
+  TICKETS_UPSTREAM="${TICKETS_UPSTREAM%/}"
 fi
 
 NS_LIST=""
@@ -42,26 +44,38 @@ if [ "$HAS_DOCKER_DNS" = "1" ] && [ -z "${PORT:-}" ]; then
 fi
 
 echo "[nginx] LISTEN_PORT=${LISTEN_PORT} PORT=${PORT:-unset}"
-echo "[nginx] resolv.conf:"
-sed -n '1,20p' /etc/resolv.conf 2>/dev/null || true
 echo "[nginx] resolver=${NS_LIST} ${RESOLVER_OPTS}"
-echo "[nginx] CHATBOT_UPSTREAM=${CHATBOT_UPSTREAM}"
-echo "[nginx] TICKETS_UPSTREAM=${TICKETS_UPSTREAM}"
 
-probe_host() {
-  _url="$1"
-  _host="$(printf '%s' "$_url" | sed -e 's|^https://||' -e 's|^http://||' -e 's|/.*||' -e 's|:.*||')"
-  echo "[nginx] getent ${_host}:"
-  getent hosts "$_host" 2>/dev/null || echo "(sin getent)"
-  if command -v wget >/dev/null 2>&1; then
-    echo "[nginx] wget ${_url}/healthz:"
-    wget -T 3 -qO- "${_url}/healthz" 2>&1 | head -c 200 || echo "(wget falló)"
-    echo
+# Convierte hostname a http://[ipv6]:puerto si wget /healthz responde.
+pick_reachable() {
+  _name="$1"
+  _default_url="$2"
+  _ip="$(getent hosts "$_name" 2>/dev/null | awk '{print $1; exit}')"
+  if [ -z "$_ip" ]; then
+    echo "$_default_url"
+    return
   fi
+  case "$_ip" in
+    *:*) _base="http://[${_ip}]" ;;
+    *) _base="http://${_ip}" ;;
+  esac
+  for _p in 8000 8001 8080 80; do
+    if wget -T 2 -qO- "${_base}:${_p}/healthz" >/tmp/nginx-probe.out 2>/dev/null; then
+      echo "${_base}:${_p}"
+      return
+    fi
+  done
+  echo "$_default_url"
 }
 
-probe_host "$CHATBOT_UPSTREAM"
-probe_host "$TICKETS_UPSTREAM"
+if [ -n "${PORT:-}" ]; then
+  CB_RESOLVED="$(pick_reachable chatbot-api.railway.internal "$CHATBOT_UPSTREAM")"
+  TK_RESOLVED="$(pick_reachable ticket-service.railway.internal "$TICKETS_UPSTREAM")"
+  echo "[nginx] pick chatbot=${CB_RESOLVED}"
+  echo "[nginx] pick tickets=${TK_RESOLVED}"
+  CHATBOT_UPSTREAM="$CB_RESOLVED"
+  TICKETS_UPSTREAM="$TK_RESOLVED"
+fi
 
 {
   echo "LISTEN_PORT=${LISTEN_PORT}"
@@ -70,12 +84,16 @@ probe_host "$TICKETS_UPSTREAM"
   echo "TICKETS_UPSTREAM=${TICKETS_UPSTREAM}"
   echo "--- resolv.conf ---"
   cat /etc/resolv.conf 2>/dev/null || true
-  echo "--- getent chatbot-api.railway.internal ---"
+  echo "--- getent ---"
   getent hosts chatbot-api.railway.internal 2>/dev/null || true
-  echo "--- getent ticket-service.railway.internal ---"
   getent hosts ticket-service.railway.internal 2>/dev/null || true
+  echo "--- wget chatbot :8000 ---"
+  wget -T 2 -S -O- "http://chatbot-api.railway.internal:8000/healthz" 2>&1 | head -c 400 || true
+  echo
+  echo "--- wget chatbot :8080 ---"
+  wget -T 2 -S -O- "http://chatbot-api.railway.internal:8080/healthz" 2>&1 | head -c 400 || true
+  echo
 } > /usr/share/nginx/html/widget/upstreams.txt
-
 
 cat > /etc/nginx/conf.d/default.conf <<EOF
 limit_req_zone \$binary_remote_addr zone=api_limit:10m rate=10r/s;
@@ -90,6 +108,7 @@ server {
 }
 EOF
 
+# El valor puede contener [] y : ; sed usa | como separador.
 sed -i \
   -e "s|^resolver .*|resolver ${NS_LIST} ${RESOLVER_OPTS};|" \
   -e "s|^set \$upstream_chatbot .*|set \$upstream_chatbot ${CHATBOT_UPSTREAM};|" \
