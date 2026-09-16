@@ -321,8 +321,12 @@ Puedes crearla **mientras** `chatbot-api` está en BUILDING.
    Luego **Apply**. Railway redespliega `chatbot-api` (más corto que el
    primer build).
 
-Hasta que `chatbot-api` esté **Online**, `nginx` puede mostrar 502; es
-normal. Recarga un par de minutos después.
+Si **Deployments** de `nginx` sale **FAILED** a la primera (suele ser
+porque Railway usó Railpack antes de poner Dockerfile): **Settings →
+Build** (menú derecho) → **Builder = Dockerfile**, **Dockerfile Path =
+deploy/nginx/Dockerfile**, **Apply**, luego **Deploy** / **Redeploy**.
+*Unexposed* en mysql/ticket/chatbot es correcto; el dominio público va
+solo en `nginx`.
 
 ---
 
