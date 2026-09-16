@@ -13,7 +13,7 @@ if [ -n "${PORT:-}" ]; then
   case "$CHATBOT_UPSTREAM" in
     *up.railway.app*|https://*) ;;
     *)
-      CHATBOT_UPSTREAM="http://chatbot-api.railway.internal:${CHATBOT_PRIVATE_PORT:-8080}"
+      CHATBOT_UPSTREAM="https://chatbot-api-production-14c9.up.railway.app"
       ;;
   esac
   case "$TICKETS_UPSTREAM" in

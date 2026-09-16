@@ -32,10 +32,10 @@ if [ "${CARGAR_KB_AL_ARRANCAR:-0}" = "1" ]; then
   python -m app.scripts.cargar_kb
 fi
 
-echo "[entrypoint] Iniciando uvicorn en [::]:${PORT:-8000}..."
-# Railway publica $PORT en la red privada; compose local usa 8000.
+echo "[entrypoint] Iniciando uvicorn en 0.0.0.0:${PORT:-8000}..."
+# 0.0.0.0 = IPv4 (dominio público de Railway). :: solo IPv6 no recibe el proxy.
 if [ -n "${PORT:-}" ] && [ "${PORT}" != "8000" ]; then
-  echo "[entrypoint] también en [::]:8000 (compatibilidad)"
-  uvicorn app.main:app --host :: --port 8000 &
+  echo "[entrypoint] también en 0.0.0.0:8000"
+  uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 fi
-exec uvicorn app.main:app --host :: --port "${PORT:-8000}"
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
