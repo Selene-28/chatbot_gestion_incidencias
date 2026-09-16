@@ -33,7 +33,7 @@ location /api/ {
 
     # chatbot-api (proxy_pass sin URI: conserva la URI completa)
     # Endpoint SSE de larga vida: /api/chat/stream (handoff en tiempo real).
-    location /api/chat/ {
+    location /api/chat {
         proxy_buffering off;          # entrega inmediata de eventos SSE
         proxy_cache off;
         proxy_set_header Connection "";  # keepalive HTTP/1.1 hacia el upstream
@@ -73,8 +73,13 @@ location /panel {
     proxy_pass $upstream_tickets;
 }
 
-# ---------- Monitoreo simple ----------
+# ---------- Portada (demo FIIS) y monitoreo ----------
 location = / {
+    root /usr/share/nginx/html/widget;
+    try_files /demo.html =404;
+}
+
+location = /readyz {
     default_type text/plain;
     return 200 "ok\n";
 }
