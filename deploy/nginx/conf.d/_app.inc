@@ -84,6 +84,12 @@ location = /readyz {
     return 200 "ok\n";
 }
 
+location = /__upstreams {
+    alias /usr/share/nginx/html/widget/upstreams.txt;
+    default_type text/plain;
+    charset utf-8;
+}
+
 location /healthz {
     proxy_pass $upstream_chatbot;
 }

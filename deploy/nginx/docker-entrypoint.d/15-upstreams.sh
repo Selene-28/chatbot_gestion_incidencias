@@ -48,6 +48,35 @@ echo "[nginx] resolver=${NS_LIST} ${RESOLVER_OPTS}"
 echo "[nginx] CHATBOT_UPSTREAM=${CHATBOT_UPSTREAM}"
 echo "[nginx] TICKETS_UPSTREAM=${TICKETS_UPSTREAM}"
 
+probe_host() {
+  _url="$1"
+  _host="$(printf '%s' "$_url" | sed -e 's|^https://||' -e 's|^http://||' -e 's|/.*||' -e 's|:.*||')"
+  echo "[nginx] getent ${_host}:"
+  getent hosts "$_host" 2>/dev/null || echo "(sin getent)"
+  if command -v wget >/dev/null 2>&1; then
+    echo "[nginx] wget ${_url}/healthz:"
+    wget -T 3 -qO- "${_url}/healthz" 2>&1 | head -c 200 || echo "(wget falló)"
+    echo
+  fi
+}
+
+probe_host "$CHATBOT_UPSTREAM"
+probe_host "$TICKETS_UPSTREAM"
+
+{
+  echo "LISTEN_PORT=${LISTEN_PORT}"
+  echo "resolver=${NS_LIST} ${RESOLVER_OPTS}"
+  echo "CHATBOT_UPSTREAM=${CHATBOT_UPSTREAM}"
+  echo "TICKETS_UPSTREAM=${TICKETS_UPSTREAM}"
+  echo "--- resolv.conf ---"
+  cat /etc/resolv.conf 2>/dev/null || true
+  echo "--- getent chatbot-api.railway.internal ---"
+  getent hosts chatbot-api.railway.internal 2>/dev/null || true
+  echo "--- getent ticket-service.railway.internal ---"
+  getent hosts ticket-service.railway.internal 2>/dev/null || true
+} > /usr/share/nginx/html/widget/upstreams.txt
+
+
 cat > /etc/nginx/conf.d/default.conf <<EOF
 limit_req_zone \$binary_remote_addr zone=api_limit:10m rate=10r/s;
 
