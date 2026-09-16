@@ -69,4 +69,7 @@ async def check_db(timeout: float = 2.0) -> bool:
         return True
     except Exception as exc:  # noqa: BLE001 — cualquier fallo implica BD no disponible
         logger.warning("Verificación de base de datos fallida: %s", exc)
+        from app.core.mysql_url import registrar_error
+
+        registrar_error(str(exc), get_settings().DB_URL)
         return False

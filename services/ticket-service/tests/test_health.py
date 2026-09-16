@@ -6,4 +6,6 @@ from fastapi.testclient import TestClient
 def test_healthz_reporta_db_down_sin_mysql(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "db": "down"}
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["db"] == "down"

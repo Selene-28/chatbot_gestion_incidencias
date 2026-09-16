@@ -54,6 +54,9 @@ async def check_db() -> bool:
     try:
         await asyncio.wait_for(_ping(), timeout=DB_CHECK_TIMEOUT_S)
         return True
-    except Exception:
-        logger.warning("Base de datos no disponible en el chequeo de salud")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Base de datos no disponible en el chequeo de salud: %s", exc)
+        from app.core.mysql_url import registrar_error
+
+        registrar_error(str(exc), get_settings().DB_URL)
         return False
