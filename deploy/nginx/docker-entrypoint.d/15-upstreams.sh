@@ -41,6 +41,9 @@ NS_LIST="$(printf '%s' "$NS_LIST" | sed 's/^ *//')"
 RESOLVER_OPTS="valid=10s"
 if [ "$HAS_DOCKER_DNS" = "1" ] && [ -z "${PORT:-}" ]; then
   RESOLVER_OPTS="valid=10s ipv6=off"
+elif [ -n "${PORT:-}" ]; then
+  # wget/nginx prefieren el A IPv4 (10.x) que rechaza el puerto; la red privada es AAAA fd12:.
+  RESOLVER_OPTS="valid=10s ipv4=off"
 fi
 
 echo "[nginx] LISTEN_PORT=${LISTEN_PORT} PORT=${PORT:-unset}"
@@ -50,22 +53,19 @@ echo "[nginx] resolver=${NS_LIST} ${RESOLVER_OPTS}"
 pick_reachable() {
   _name="$1"
   _default_url="$2"
-  _ip="$(getent hosts "$_name" 2>/dev/null | awk '{print $1; exit}')"
+  _ip="$(getent hosts "$_name" 2>/dev/null | awk '/:/{print $1; exit}')"
   if [ -z "$_ip" ]; then
     echo "$_default_url"
     return
   fi
-  case "$_ip" in
-    *:*) _base="http://[${_ip}]" ;;
-    *) _base="http://${_ip}" ;;
-  esac
+  _base="http://[${_ip}]"
   for _p in 8000 8001 8080 80; do
     if wget -T 2 -qO- "${_base}:${_p}/healthz" >/tmp/nginx-probe.out 2>/dev/null; then
       echo "${_base}:${_p}"
       return
     fi
   done
-  echo "$_default_url"
+  echo "${_base}:8000"
 }
 
 if [ -n "${PORT:-}" ]; then
@@ -87,12 +87,15 @@ fi
   echo "--- getent ---"
   getent hosts chatbot-api.railway.internal 2>/dev/null || true
   getent hosts ticket-service.railway.internal 2>/dev/null || true
-  echo "--- wget chatbot :8000 ---"
-  wget -T 2 -S -O- "http://chatbot-api.railway.internal:8000/healthz" 2>&1 | head -c 400 || true
-  echo
-  echo "--- wget chatbot :8080 ---"
-  wget -T 2 -S -O- "http://chatbot-api.railway.internal:8080/healthz" 2>&1 | head -c 400 || true
-  echo
+  echo "--- wget chatbot ipv6 :8000 ---"
+  CB6="$(getent hosts chatbot-api.railway.internal 2>/dev/null | awk '/:/{print $1; exit}')"
+  echo "ipv6=${CB6}"
+  if [ -n "$CB6" ]; then
+    wget -T 2 -S -O- "http://[${CB6}]:8000/healthz" 2>&1 | head -c 500 || true
+    echo
+    wget -T 2 -S -O- "http://[${CB6}]:8080/healthz" 2>&1 | head -c 300 || true
+    echo
+  fi
 } > /usr/share/nginx/html/widget/upstreams.txt
 
 cat > /etc/nginx/conf.d/default.conf <<EOF
