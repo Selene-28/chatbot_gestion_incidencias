@@ -208,14 +208,36 @@ En **Settings de mysql** deja todo como está: rama
    - Pulsa **Add Root Directory** y escribe exactamente:
      `services/ticket-service`
      (luego Enter o el visto para guardar).
-4. Pestaña **Variables**. Si no ves las 13 compartidas, hay que
-   compartirlas con esta caja. Luego **+ New Variable** dos veces
-   (cada una: rellena las cajas → **Add**):
+4. Pestaña **Variables**. En una caja **nueva** sale *No Environment
+   Variables* (las de mysql **no** se copian solas). Haz **una** de estas:
 
-   | VARIABLE_NAME | VALUE or ${{REF}} |
-   |---|---|
-   | `DB_URL` | `mysql+asyncmy://tickets:${{DB_TICKETS_PASSWORD}}@mysql.railway.internal:3306/tickets_db` |
-   | `UPLOADS_DIR` | `/data/uploads` |
+   **A (si ves Shared Variable y las mismas claves que mysql):** pulsa
+   **Shared Variable** y comparte el conjunto con `ticket-service`. Luego
+   **Raw Editor** y añade solo las 2 líneas de `DB_URL` y `UPLOADS_DIR`.
+
+   **B (la más simple, recomendada):** pulsa **Raw Editor** (arriba a la
+   derecha) y pega **todo** este bloque. Guarda / **Update**.
+
+   ```
+   TZ=America/Lima
+   DB_ROOT_PASSWORD=TesisCtic2026Root
+   MYSQL_ROOT_PASSWORD=TesisCtic2026Root
+   DB_CHATBOT_PASSWORD=TesisCtic2026Chatbot
+   DB_TICKETS_PASSWORD=TesisCtic2026Tickets
+   TICKETS_API_KEY=TesisCtic2026ApiKey
+   JWT_SECRET=TesisCtic2026JwtSecretoLargoParaFirmarElPanel
+   SEED_ADMIN_PASSWORD=TesisCtic2026Admin
+   SEED_TECNICO_PASSWORD=TesisCtic2026Tecnico
+   ANTHROPIC_API_KEY=cambiar
+   LLM_MODEL=claude-opus-4-8
+   LLM_MODEL_ROUTER=claude-haiku-4-5
+   RAG_UMBRAL_SIMILITUD=0.83
+   ALLOWED_ORIGINS=https://fiis.unac.edu.pe,https://www.fiis.unac.edu.pe
+   DB_URL=mysql+asyncmy://tickets:${{DB_TICKETS_PASSWORD}}@mysql.railway.internal:3306/tickets_db
+   UPLOADS_DIR=/data/uploads
+   ```
+
+   Aún **no** pulses **Deploy**.
 
 5. Volumen: **Ctrl+K** → **New Volume**, adjúntalo a `ticket-service`,
    **Mount path:** `/data/uploads`
@@ -326,6 +348,7 @@ lo cubre).
 | Railway no lista el repo | GitHub App: da acceso al repo privado |
 | `mysql` FAILED en **Build > Build image** (0–3 s) | **Branch** está en `master`. Cámbiala a `cursor/demo-api-same-origin-2754` y **Apply** |
 | Variable nueva y solo aparece **Add** | Pulsa **Add**; un clic vacío no guarda. Luego **Apply N change** |
+| `ticket-service` Variables vacío (*No Environment Variables*) | **Raw Editor** y pega el bloque del paso 4.2 (incluye `DB_URL`) |
 | Build rojo en `chatbot-api` | Espera; si es RAM, súbela a 2 GB |
 | 502 / mantenimiento | Logs de `mysql` y `chatbot-api`; nombres de servicio exactos |
 | Chat “no se pudo conectar” | `PUBLIC_APP_URL` y `ALLOWED_ORIGINS` con `https://` |
