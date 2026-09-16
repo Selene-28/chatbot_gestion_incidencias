@@ -14,6 +14,18 @@ else
   APP_PORT="${PORT:-$PRIV_PORT}"
 fi
 
+# En Railway el volumen /data/uploads a menudo es del root y el USER app no escribe.
+UPLOADS="${UPLOADS_DIR:-/data/uploads}"
+if ! mkdir -p "$UPLOADS" 2>/dev/null || ! touch "$UPLOADS/.write_test" 2>/dev/null; then
+  UPLOADS="${HOME:-/tmp}/uploads"
+  mkdir -p "$UPLOADS"
+  export UPLOADS_DIR="$UPLOADS"
+  echo "[entrypoint] AVISO: carpeta de adjuntos no escribible; usando ${UPLOADS_DIR}"
+else
+  rm -f "$UPLOADS/.write_test"
+  echo "[entrypoint] adjuntos en ${UPLOADS}"
+fi
+
 echo "[entrypoint] uvicorn 0.0.0.0:${APP_PORT} (PORT=${PORT:-unset})"
 uvicorn app.main:app --host 0.0.0.0 --port "$APP_PORT" \
   --proxy-headers --forwarded-allow-ips='*' &

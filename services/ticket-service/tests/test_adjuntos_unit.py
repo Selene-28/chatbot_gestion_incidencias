@@ -12,6 +12,7 @@ from app.services.adjuntos import (
     detectar_tipo,
     generar_adjunto_id,
     nombre_archivo_almacenado,
+    resolver_directorio_uploads,
     ruta_adjunto_segura,
     sanear_nombre_original,
     validar_archivo,
@@ -140,3 +141,20 @@ def test_ruta_adjunto_segura_404_si_falta_archivo(
     adjunto = SimpleNamespace(ruta_almacenada=str(tmp_path / "no-existe.png"))
     with pytest.raises(NotFoundError):
         ruta_adjunto_segura(adjunto)
+
+
+def test_resolver_directorio_uploads_usa_el_primero_escribible(tmp_path: Path) -> None:
+    bueno = tmp_path / "ok"
+    assert resolver_directorio_uploads(bueno) == bueno.resolve()
+
+
+def test_resolver_directorio_uploads_salta_el_que_no_escribe(tmp_path: Path) -> None:
+    bloqueado = tmp_path / "bloqueado"
+    bloqueado.mkdir()
+    bloqueado.chmod(0o555)
+    fallback = tmp_path / "fallback"
+    try:
+        elegido = resolver_directorio_uploads(bloqueado, fallback)
+    finally:
+        bloqueado.chmod(0o755)
+    assert elegido == fallback.resolve()

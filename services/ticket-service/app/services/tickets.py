@@ -14,8 +14,6 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
-from app.core.config import get_settings
 from app.core.errors import (
     ConflictError,
     ForbiddenError,
@@ -38,7 +36,7 @@ from app.models import (
     Usuario,
 )
 from app.schemas import comunes
-from app.services.adjuntos import MAX_ADJUNTOS_POR_TICKET
+from app.services.adjuntos import MAX_ADJUNTOS_POR_TICKET, directorio_uploads
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +277,7 @@ async def _adjuntar_desde_staging(
                 {"field": "adjuntoId", "description": "El archivo adjunto ya no está disponible."}
             ],
         )
-    destino_dir = Path(get_settings().UPLOADS_DIR) / "tickets"
+    destino_dir = directorio_uploads() / "tickets"
     destino_dir.mkdir(parents=True, exist_ok=True)
     destino = destino_dir / origen.name
     shutil.move(str(origen), str(destino))

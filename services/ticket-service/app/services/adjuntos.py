@@ -7,6 +7,7 @@ aleatorio en `{UPLOADS_DIR}/staging/`. Un job horario purga los huérfanos.
 
 import asyncio
 import logging
+import os
 import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -67,6 +68,52 @@ def validar_archivo(contenido: bytes) -> tuple[str, str]:
     return tipo
 
 
+def _puede_escribir(directorio: Path) -> bool:
+    """True si se puede crear el directorio y escribir un archivo de prueba."""
+    try:
+        directorio.mkdir(parents=True, exist_ok=True)
+        sonda = directorio / ".write_test"
+        sonda.write_bytes(b"ok")
+        sonda.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+def resolver_directorio_uploads(*candidatos: Path) -> Path:
+    """Primera ruta escribible; en Railway el volumen /data/uploads suele ser root."""
+    vistos: list[Path] = []
+    for candidato in candidatos:
+        if candidato in vistos:
+            continue
+        vistos.append(candidato)
+        if _puede_escribir(candidato):
+            return candidato.resolve()
+    raise OSError("No hay un directorio escribible para guardar adjuntos.")
+
+
+_aviso_uploads_emitido = False
+
+
+def directorio_uploads() -> Path:
+    """Carpeta real de adjuntos: UPLOADS_DIR, o $HOME/uploads, o /tmp."""
+    global _aviso_uploads_emitido
+    configurado = Path(get_settings().UPLOADS_DIR)
+    elegido = resolver_directorio_uploads(
+        configurado,
+        Path(os.environ.get("HOME", "/tmp")) / "uploads",
+        Path("/tmp/ctic-uploads"),
+    )
+    if elegido != configurado.resolve() and not _aviso_uploads_emitido:
+        logger.warning(
+            "UPLOADS_DIR %s no es escribible; los adjuntos se guardan en %s",
+            configurado,
+            elegido,
+        )
+        _aviso_uploads_emitido = True
+    return elegido
+
+
 def generar_adjunto_id() -> str:
     """Genera un token corto tipo adj_XXXXXXXX (12 caracteres, aleatorio)."""
     return f"adj_{secrets.token_hex(4)}"
@@ -77,11 +124,19 @@ def nombre_archivo_almacenado(adjunto_id: str, extension: str) -> str:
     return f"{adjunto_id}{extension}"
 
 
+def _raices_uploads_permitidas() -> list[Path]:
+    """Raíces válidas: la carpeta en uso y la configurada (por si hay archivos viejos)."""
+    raices = [directorio_uploads()]
+    configurada = Path(get_settings().UPLOADS_DIR).resolve()
+    if configurada not in raices:
+        raices.append(configurada)
+    return raices
+
+
 def ruta_adjunto_segura(adjunto: TicketAdjunto) -> Path:
     """Resuelve la ruta física del adjunto; exige que viva bajo UPLOADS_DIR (RF-13)."""
-    uploads = Path(get_settings().UPLOADS_DIR).resolve()
     destino = Path(adjunto.ruta_almacenada).resolve()
-    if not destino.is_relative_to(uploads):
+    if not any(destino.is_relative_to(raiz) for raiz in _raices_uploads_permitidas()):
         raise ForbiddenError("La ruta del adjunto no es válida.")
     if not destino.is_file():
         raise NotFoundError("El archivo adjunto ya no está disponible.")
@@ -106,7 +161,7 @@ async def subir_adjunto(
             break
         adjunto_id = generar_adjunto_id()
 
-    staging_dir = Path(get_settings().UPLOADS_DIR) / "staging"
+    staging_dir = directorio_uploads() / "staging"
     staging_dir.mkdir(parents=True, exist_ok=True)
     ruta = staging_dir / nombre_archivo_almacenado(adjunto_id, extension)
     ruta.write_bytes(content)
