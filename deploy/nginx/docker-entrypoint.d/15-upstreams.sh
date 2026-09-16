@@ -4,10 +4,20 @@
 set -u
 
 LISTEN_PORT="${PORT:-${LISTEN_PORT:-80}}"
-CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM:-http://chatbot-api:8000}"
-TICKETS_UPSTREAM="${TICKETS_UPSTREAM:-http://ticket-service:8001}"
-CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM%/}"
-TICKETS_UPSTREAM="${TICKETS_UPSTREAM%/}"
+
+# Railway Raw Editor a veces guarda comillas y una barra final.
+strip_url() {
+  u="$1"
+  u="${u%\"}"
+  u="${u#\"}"
+  u="${u%\'}"
+  u="${u#\'}"
+  u="${u%/}"
+  printf '%s' "$u"
+}
+
+CHATBOT_UPSTREAM="$(strip_url "${CHATBOT_UPSTREAM:-http://chatbot-api:8000}")"
+TICKETS_UPSTREAM="$(strip_url "${TICKETS_UPSTREAM:-http://ticket-service:8001}")"
 
 if [ -n "${PORT:-}" ]; then
   case "$CHATBOT_UPSTREAM" in
@@ -19,7 +29,7 @@ if [ -n "${PORT:-}" ]; then
   case "$TICKETS_UPSTREAM" in
     *up.railway.app*|https://*) ;;
     *)
-      TICKETS_UPSTREAM="http://ticket-service.railway.internal:${TICKETS_PRIVATE_PORT:-8080}"
+      TICKETS_UPSTREAM="https://ticket-service-production-889c.up.railway.app"
       ;;
   esac
   CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM%/}"

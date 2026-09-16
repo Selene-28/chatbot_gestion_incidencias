@@ -1,32 +1,77 @@
 #!/bin/sh
-# Entrypoint del contenedor: espera a que MySQL acepte conexiones, aplica las
-# migraciones UNA sola vez (un error real de SQL debe abortar, no reintentarse:
-# el DDL de MySQL no es transaccional y reintentar deja el esquema a medias)
-# y luego levanta la API con uvicorn.
+# Entrypoint: MySQL → migraciones UNA vez → uvicorn.
+# En Railway el proxy público habla IPv4:8080 desde el segundo 1; el mesh
+# interno habla IPv6. Si el puerto se abre tarde, el visitante ve 502.
 set -eu
 
 MAX_ATTEMPTS="${DB_WAIT_ATTEMPTS:-60}"
 SLEEP_SECONDS=2
+PRIV_PORT=8000
 
-# Railway inyecta PORT (casi siempre 8080) y habla IPv4 al dominio público.
-# El mesh privado (*.railway.internal) habla IPv6. Hay que escuchar los dos.
-if [ -n "${RAILWAY_ENVIRONMENT:-}" ] && [ -z "${PORT:-}" ]; then
+on_railway=0
+if [ -n "${RAILWAY_ENVIRONMENT:-}${RAILWAY_PROJECT_ID:-}${RAILWAY_PRIVATE_DOMAIN:-}" ]; then
+  on_railway=1
+fi
+if grep -q railway.internal /etc/resolv.conf 2>/dev/null; then
+  on_railway=1
+fi
+if [ "$on_railway" = "1" ] && [ -z "${PORT:-}" ]; then
   PORT=8080
   export PORT
 fi
-APP_PORT="${PORT:-8000}"
-PRIV_PORT=8000
+APP_PORT="${PORT:-$PRIV_PORT}"
+if [ "$on_railway" = "1" ]; then
+  APP_PORT="${PORT:-8080}"
+fi
 
-# Reenvía [::]:PUERTO → 127.0.0.1:PUERTO (IPv6 del mesh → uvicorn IPv4).
+abrir_placeholder() {
+  puerto="$1"
+  PORT_PLACEHOLDER="$puerto" python -c '
+import os
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+port = int(os.environ["PORT_PLACEHOLDER"])
+
+class H(BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = b"{\"status\":\"starting\"}"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def log_message(self, *_args):
+        return
+
+print("[entrypoint] placeholder 0.0.0.0:%s" % port, flush=True)
+HTTPServer(("0.0.0.0", port), H).serve_forever()
+' &
+  echo $! > "/tmp/placeholder-${puerto}.pid"
+}
+
+cerrar_placeholder() {
+  puerto="$1"
+  pidfile="/tmp/placeholder-${puerto}.pid"
+  if [ -f "$pidfile" ]; then
+    pid="$(cat "$pidfile")"
+    kill "$pid" 2>/dev/null || true
+    sleep 1
+    kill -9 "$pid" 2>/dev/null || true
+    rm -f "$pidfile"
+  fi
+}
+
 escuchar_ipv6() {
   puerto="$1"
-  (
-  python - "$puerto" <<'PY'
-import socket
-import sys
-import threading
+  PORT_V6="$puerto" python -c '
+import os, socket, threading
 
-port = int(sys.argv[1])
+port = int(os.environ["PORT_V6"])
 
 def pipe(src, dst):
     try:
@@ -38,16 +83,12 @@ def pipe(src, dst):
     except OSError:
         pass
     finally:
-        try:
-            src.shutdown(socket.SHUT_RDWR)
-        except OSError:
-            pass
-        try:
-            dst.shutdown(socket.SHUT_RDWR)
-        except OSError:
-            pass
-        src.close()
-        dst.close()
+        for s in (src, dst):
+            try:
+                s.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            s.close()
 
 def handle(client):
     try:
@@ -63,13 +104,27 @@ sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
 sock.bind(("::", port))
 sock.listen(128)
-print(f"[entrypoint] IPv6 [::]:{port} → 127.0.0.1:{port}", flush=True)
+print("[entrypoint] IPv6 [::]:%s -> 127.0.0.1:%s" % (port, port), flush=True)
 while True:
     client, _ = sock.accept()
     threading.Thread(target=handle, args=(client,), daemon=True).start()
-PY
-  ) &
+' &
 }
+
+# --- Railway: abrir 8080 YA, antes de MySQL / KB ---
+if [ "$on_railway" = "1" ]; then
+  echo "[entrypoint] Railway detectado; PORT=${PORT:-unset} APP_PORT=${APP_PORT}"
+  abrir_placeholder "$APP_PORT"
+  escuchar_ipv6 "$APP_PORT"
+  if [ "$APP_PORT" != "$PRIV_PORT" ]; then
+    abrir_placeholder "$PRIV_PORT"
+    escuchar_ipv6 "$PRIV_PORT"
+  fi
+  if [ "$APP_PORT" != "8080" ]; then
+    abrir_placeholder 8080
+    escuchar_ipv6 8080
+  fi
+fi
 
 attempt=1
 until python -c "
@@ -95,10 +150,20 @@ if [ "${CARGAR_KB_AL_ARRANCAR:-0}" = "1" ]; then
   python -m app.scripts.cargar_kb &
 fi
 
-escuchar_ipv6 "$APP_PORT"
-if [ "$APP_PORT" != "$PRIV_PORT" ]; then
-  echo "[entrypoint] también en 0.0.0.0:${PRIV_PORT} (mesh interno)"
-  escuchar_ipv6 "$PRIV_PORT"
+if [ "$on_railway" = "1" ]; then
+  cerrar_placeholder "$APP_PORT"
+  if [ "$APP_PORT" != "$PRIV_PORT" ]; then
+    cerrar_placeholder "$PRIV_PORT"
+    echo "[entrypoint] también en 0.0.0.0:${PRIV_PORT}"
+    uvicorn app.main:app --host 0.0.0.0 --port "$PRIV_PORT" --proxy-headers --forwarded-allow-ips='*' &
+  fi
+  if [ "$APP_PORT" != "8080" ]; then
+    cerrar_placeholder 8080
+    echo "[entrypoint] también en 0.0.0.0:8080 (dominio público Railway)"
+    uvicorn app.main:app --host 0.0.0.0 --port 8080 --proxy-headers --forwarded-allow-ips='*' &
+  fi
+elif [ -n "${PORT:-}" ] && [ "$APP_PORT" != "$PRIV_PORT" ]; then
+  echo "[entrypoint] también en 0.0.0.0:${PRIV_PORT}"
   uvicorn app.main:app --host 0.0.0.0 --port "$PRIV_PORT" --proxy-headers --forwarded-allow-ips='*' &
 fi
 
