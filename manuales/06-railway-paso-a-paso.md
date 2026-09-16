@@ -160,8 +160,11 @@ Vas a pulsar **+ New** cuatro veces. **El nombre tiene que ser exacto**
    **+ New Variable**. Aparecen dos cajas (no un bloque `CLAVE=valor`):
    - En **VARIABLE_NAME** escribe: `MYSQL_ROOT_PASSWORD`
    - En **VALUE or ${{REF}}** escribe: `TesisCtic2026Root`
-   - No uses **Add Reference**. Clic fuera de la fila para que se guarde.
-   - Arriba a la izquierda, **Apply N change** (aún **no** pulses **Deploy**).
+   - No uses **Add Reference**. Pulsa el botón **Add** de esa fila
+     (un clic en el fondo **no** la guarda).
+   - Cuando `MYSQL_ROOT_PASSWORD` aparezca en la lista con puntos
+     (`******`), arriba a la izquierda pulsa **Apply N change**.
+     Aún **no** pulses **Deploy**.
 
    (el mismo valor que `DB_ROOT_PASSWORD`; MySQL solo reconoce este nombre).
 5. Volumen: clic derecho en el lienzo o **Ctrl+K** → **New Volume**, adjúntalo
