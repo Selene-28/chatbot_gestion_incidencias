@@ -259,8 +259,9 @@ acortar. Mientras construye, puedes armar `nginx` (paso 4.4).
    - **Branch:** `cursor/demo-api-same-origin-2754`
    - **Add Root Directory:** `services/chatbot-api` (sin `/` al inicio)
    - **Wait for CI** apagado
-   - Baja (no escribas en *Filter Settings*) hasta **Resources** /
-     **Memory** y pon **al menos 2 GB**. Con 512 MB se cae.
+   - Baja (no escribas en *Filter Settings*) hasta **Replica Limits** →
+     **Memory**. Pon **al menos 2 GB**. **8 GB está bien** (es un tope, no
+     un gasto fijo). No bajes de 2 GB. **CPU** puede quedarse alto.
 4. **Variables** → **Raw Editor**, pega todo, guarda:
 
    ```
