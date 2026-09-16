@@ -32,5 +32,5 @@ if [ "${CARGAR_KB_AL_ARRANCAR:-0}" = "1" ]; then
   python -m app.scripts.cargar_kb
 fi
 
-echo "[entrypoint] Iniciando uvicorn en [::]:8000 (IPv6; red privada de Railway)..."
-exec uvicorn app.main:app --host :: --port 8000
+echo "[entrypoint] Iniciando uvicorn en [::]:${PORT:-8000}..."
+exec uvicorn app.main:app --host :: --port "${PORT:-8000}"

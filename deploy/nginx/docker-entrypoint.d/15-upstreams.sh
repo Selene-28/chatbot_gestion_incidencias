@@ -10,11 +10,11 @@ TICKETS_UPSTREAM="${TICKETS_UPSTREAM%/}"
 
 if [ -n "${PORT:-}" ]; then
   case "$CHATBOT_UPSTREAM" in
-    *railway.internal*) ;;
+    *railway.internal*|*up.railway.app*|https://*) ;;
     *) CHATBOT_UPSTREAM="http://chatbot-api.railway.internal:8000" ;;
   esac
   case "$TICKETS_UPSTREAM" in
-    *railway.internal*) ;;
+    *railway.internal*|*up.railway.app*|https://*) ;;
     *) TICKETS_UPSTREAM="http://ticket-service.railway.internal:8001" ;;
   esac
   CHATBOT_UPSTREAM="${CHATBOT_UPSTREAM%/}"
@@ -69,12 +69,19 @@ pick_reachable() {
 }
 
 if [ -n "${PORT:-}" ]; then
-  CB_RESOLVED="$(pick_reachable chatbot-api.railway.internal "$CHATBOT_UPSTREAM")"
-  TK_RESOLVED="$(pick_reachable ticket-service.railway.internal "$TICKETS_UPSTREAM")"
-  echo "[nginx] pick chatbot=${CB_RESOLVED}"
-  echo "[nginx] pick tickets=${TK_RESOLVED}"
-  CHATBOT_UPSTREAM="$CB_RESOLVED"
-  TICKETS_UPSTREAM="$TK_RESOLVED"
+  case "$CHATBOT_UPSTREAM" in
+    *up.railway.app*|https://*)
+      echo "[nginx] usando URL pública; no se fuerza IPv6 interno"
+      ;;
+    *)
+      CB_RESOLVED="$(pick_reachable chatbot-api.railway.internal "$CHATBOT_UPSTREAM")"
+      TK_RESOLVED="$(pick_reachable ticket-service.railway.internal "$TICKETS_UPSTREAM")"
+      echo "[nginx] pick chatbot=${CB_RESOLVED}"
+      echo "[nginx] pick tickets=${TK_RESOLVED}"
+      CHATBOT_UPSTREAM="$CB_RESOLVED"
+      TICKETS_UPSTREAM="$TK_RESOLVED"
+      ;;
+  esac
 fi
 
 {
