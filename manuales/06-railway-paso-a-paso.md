@@ -191,24 +191,36 @@ No pulses **Diagnosis**. Haz esto, en este orden:
    del recuadro rojo) y manda captura **del texto del log**, no de esta
    lista de pasos.
 
-Hasta que `mysql` esté **Success** (verde), **no** crees `ticket-service`.
+Hasta que `mysql` esté **Success** (verde) o el recuadro de la caja diga
+**Online**, **no** crees `ticket-service`.
+
+En **Settings de mysql** deja todo como está: rama
+`cursor/demo-api-same-origin-2754`, **sin** Root Directory, **sin** pulsar
+**Disconnect**.
 
 ### 4.2 Caja `ticket-service`
 
-1. **+ New** → **GitHub Repo** → el mismo repo.
-2. **Settings:**
-   - Nombre: `ticket-service`
-   - Branch: la misma.
-   - **Root Directory:** `services/ticket-service`
-3. **Variables** (además de las compartidas), pega:
+1. En el lienzo (la zona de la izquierda), pulsa **+** → **GitHub Repo** →
+   el mismo repo `chatbot_gestion_incidencias`.
+2. Clic en la caja nueva. Lápiz **Edit service name** → `ticket-service`.
+3. **Settings:**
+   - **Source → Branch:** `cursor/demo-api-same-origin-2754` (no `master`).
+   - Pulsa **Add Root Directory** y escribe exactamente:
+     `services/ticket-service`
+     (luego Enter o el visto para guardar).
+4. Pestaña **Variables**. Si no ves las 13 compartidas, hay que
+   compartirlas con esta caja. Luego **+ New Variable** dos veces
+   (cada una: rellena las cajas → **Add**):
 
-```
-DB_URL=mysql+asyncmy://tickets:${{DB_TICKETS_PASSWORD}}@mysql.railway.internal:3306/tickets_db
-UPLOADS_DIR=/data/uploads
-```
+   | VARIABLE_NAME | VALUE or ${{REF}} |
+   |---|---|
+   | `DB_URL` | `mysql+asyncmy://tickets:${{DB_TICKETS_PASSWORD}}@mysql.railway.internal:3306/tickets_db` |
+   | `UPLOADS_DIR` | `/data/uploads` |
 
-4. **Volume:** mount path `/data/uploads`
-5. **Settings → Resources:** 512 MB alcanza.
+5. Volumen: **Ctrl+K** → **New Volume**, adjúntalo a `ticket-service`,
+   **Mount path:** `/data/uploads`
+6. **Apply**. En **Deployments** espera **Success** (unos minutos).
+   Si sale rojo al instante, la rama o el Root Directory están mal.
 
 ### 4.3 Caja `chatbot-api`
 
@@ -313,6 +325,7 @@ lo cubre).
 |---|---|
 | Railway no lista el repo | GitHub App: da acceso al repo privado |
 | `mysql` FAILED en **Build > Build image** (0–3 s) | **Branch** está en `master`. Cámbiala a `cursor/demo-api-same-origin-2754` y **Apply** |
+| Variable nueva y solo aparece **Add** | Pulsa **Add**; un clic vacío no guarda. Luego **Apply N change** |
 | Build rojo en `chatbot-api` | Espera; si es RAM, súbela a 2 GB |
 | 502 / mantenimiento | Logs de `mysql` y `chatbot-api`; nombres de servicio exactos |
 | Chat “no se pudo conectar” | `PUBLIC_APP_URL` y `ALLOWED_ORIGINS` con `https://` |
