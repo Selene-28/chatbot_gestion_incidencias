@@ -241,8 +241,10 @@ En **Settings de mysql** deja todo como está: rama
 5. Volumen: **Ctrl+K** → **New Volume**, adjúntalo a `ticket-service`,
    **Mount path:** `/data/uploads`
 6. Arriba a la izquierda pulsa **Apply N changes** (eso **sí** guarda).
-   **No** pulses el botón morado **Deploy**: Apply ya dispara el despliegue.
+   Si **Deployments** dice *There is no active deployment*, entonces sí
+   pulsa el botón morado **Deploy** (o el enlace **Deploy the repo …**).
    En **Deployments** espera **Success** (unos minutos).
+   *Unexposed service* es correcto: esta caja no se publica a internet.
    Si sale rojo al instante, la rama o el Root Directory están mal.
 
 ### 4.3 Caja `chatbot-api`
@@ -350,7 +352,7 @@ lo cubre).
 | `mysql` FAILED en **Build > Build image** (0–3 s) | **Branch** está en `master`. Cámbiala a `cursor/demo-api-same-origin-2754` y **Apply** |
 | Variable nueva y solo aparece **Add** | Pulsa **Add**; un clic vacío no guarda. Luego **Apply N change** |
 | `ticket-service` Variables vacío (*No Environment Variables*) | **Raw Editor** y pega el bloque del paso 4.2 (incluye `DB_URL`) |
-| Duda **Apply** vs **Deploy** | Guarda con **Apply N changes** (izquierda). **Deploy** no aplica los cambios pendientes |
+| Duda **Apply** vs **Deploy** | Primero **Apply N changes**. Si Deployments está vacío (*no active deployment*), entonces sí **Deploy** |
 | Build rojo en `chatbot-api` | Espera; si es RAM, súbela a 2 GB |
 | 502 / mantenimiento | Logs de `mysql` y `chatbot-api`; nombres de servicio exactos |
 | Chat “no se pudo conectar” | `PUBLIC_APP_URL` y `ALLOWED_ORIGINS` con `https://` |
