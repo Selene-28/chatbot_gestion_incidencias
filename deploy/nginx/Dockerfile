@@ -1,18 +1,14 @@
 # Nginx with widget + reverse-proxy config baked in.
-# Avoids host bind-mounts (they are empty when the Docker daemon is remote).
-# Plantillas + envsubst: en Railway escucha $PORT y resuelve *.railway.internal.
+# Evita plantillas envsubst: $host se corrompe y Railway marca Crashed.
 FROM nginx:1.27-alpine
 
-COPY deploy/nginx/templates/ /etc/nginx/templates/
+COPY deploy/nginx/conf.d/_app.inc /etc/nginx/conf.d/_app.inc
 COPY deploy/nginx/docker-entrypoint.d/15-upstreams.sh /docker-entrypoint.d/15-upstreams.sh
 COPY deploy/nginx/html/maintenance.html /usr/share/nginx/html/maintenance.html
 COPY widget/public /usr/share/nginx/html/widget
 
 RUN chmod +x /docker-entrypoint.d/15-upstreams.sh \
     && rm -f /etc/nginx/conf.d/default.conf
-
-# Solo estas claves las rellena envsubst; el resto de $host / $uri se dejan.
-ENV NGINX_ENVSUBST_FILTER="LISTEN_PORT|CHATBOT_UPSTREAM|TICKETS_UPSTREAM|NGINX_RESOLVER"
 
 ENV LISTEN_PORT=80 \
     CHATBOT_UPSTREAM=http://chatbot-api:8000 \

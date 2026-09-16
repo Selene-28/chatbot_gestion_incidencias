@@ -314,11 +314,11 @@ Puedes crearla **mientras** `chatbot-api` está en BUILDING.
    ```
 
 5. **Apply**, luego **Deploy** si Deployments está vacío.
-6. Cuando `nginx` esté **Online**: **Settings** → menú derecho **Networking**
-   → **Generate Domain**. Si pide el puerto, deja **8080** (no pegues una
-   URL). Pulsa el botón morado **Generate Domain**.
-   Copia la URL `https://….up.railway.app` que **aparece después** (sin
+6. Cuando `nginx` esté **Online**: **Settings** → menú derecho **Networking**.
+   Si **ya** ves un dominio (`algo.up.railway.app` → Port 8080), **no**
+   pulses otra vez **Generate Domain**. Copia esa URL (con `https://`, sin
    barra al final).
+   Si no hay dominio: deja puerto **8080** → **Generate Domain**.
 7. En **chatbot-api** → **Variables** → **+ New Variable** → **Add**:
    - `PUBLIC_APP_URL` = esa URL
    Luego **Apply**. Railway redespliega `chatbot-api` (más corto que el

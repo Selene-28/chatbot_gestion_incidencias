@@ -74,6 +74,11 @@ location /panel {
 }
 
 # ---------- Monitoreo simple ----------
+location = / {
+    default_type text/plain;
+    return 200 "ok\n";
+}
+
 location /healthz {
     proxy_pass $upstream_chatbot;
 }
