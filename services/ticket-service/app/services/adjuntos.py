@@ -21,7 +21,9 @@ from app.models import AdjuntoStaging, TicketAdjunto
 
 logger = logging.getLogger(__name__)
 
-TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024  # 5 MB (RF-13)
+TAMANO_MAXIMO_MB = 15
+TAMANO_MAXIMO_BYTES = TAMANO_MAXIMO_MB * 1024 * 1024
+MAX_ADJUNTOS_POR_TICKET = 8
 PURGA_INTERVALO_S = 3600  # el job corre cada hora
 PURGA_MAX_HORAS = 24  # huérfanos con más de 24 h se eliminan
 
@@ -33,7 +35,7 @@ _FIRMAS: tuple[tuple[bytes, str, str], ...] = (
 )
 
 MSG_TIPO_INVALIDO = "El archivo debe ser JPG, JPEG, PNG o PDF."
-MSG_TAMANO_EXCEDIDO = "El archivo supera el tamaño máximo de 5 MB."
+MSG_TAMANO_EXCEDIDO = f"El archivo supera el tamaño máximo de {TAMANO_MAXIMO_MB} MB."
 
 
 def detectar_tipo(contenido: bytes) -> tuple[str, str] | None:
@@ -45,7 +47,7 @@ def detectar_tipo(contenido: bytes) -> tuple[str, str] | None:
 
 
 def validar_archivo(contenido: bytes) -> tuple[str, str]:
-    """Valida tamaño ≤ 5 MB y tipo por firma; devuelve (extensión, mime)."""
+    """Valida tamaño ≤ 15 MB y tipo por firma; devuelve (extensión, mime)."""
     if len(contenido) == 0:
         raise ValidationAppError(
             "Los datos enviados son inválidos.",

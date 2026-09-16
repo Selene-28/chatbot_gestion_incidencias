@@ -344,7 +344,7 @@ def test_detalle_muestra_seccion_respuesta_y_adjuntos(
     assert "<h2>Respuesta</h2>" in r.text
     assert 'name="respuesta"' in r.text
     assert 'maxlength="1000"' in r.text
-    assert "<h2>Archivo adjunto</h2>" in r.text
+    assert "<h2>Archivos adjuntos</h2>" in r.text
     assert "Esta incidencia no tiene archivos adjuntos." in r.text
 
 

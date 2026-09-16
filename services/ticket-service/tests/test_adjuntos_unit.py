@@ -61,14 +61,14 @@ def test_validar_archivo_rechaza_extension_enganosa() -> None:
         validar_archivo(b"no soy un png de verdad")
 
 
-def test_validar_archivo_rechaza_mayor_a_5mb() -> None:
-    grande = b"\xff\xd8\xff" + b"\x00" * TAMANO_MAXIMO_BYTES  # 5 MB + 3 bytes
+def test_validar_archivo_rechaza_mayor_al_maximo() -> None:
+    grande = b"\xff\xd8\xff" + b"\x00" * TAMANO_MAXIMO_BYTES  # tope + 3 bytes
     with pytest.raises(ValidationAppError) as excinfo:
         validar_archivo(grande)
-    assert any("5 MB" in e.description for e in excinfo.value.errors)
+    assert any("15 MB" in e.description for e in excinfo.value.errors)
 
 
-def test_validar_archivo_acepta_exactamente_5mb() -> None:
+def test_validar_archivo_acepta_exactamente_el_maximo() -> None:
     exacto = b"\xff\xd8\xff" + b"\x00" * (TAMANO_MAXIMO_BYTES - 3)
     assert validar_archivo(exacto) == (".jpg", "image/jpeg")
 

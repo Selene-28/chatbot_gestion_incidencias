@@ -9,13 +9,13 @@ resolver 127.0.0.11 valid=10s ipv6=off;
 set $upstream_chatbot http://chatbot-api:8000;
 set $upstream_tickets http://ticket-service:8001;
 
-# Adjuntos ≤ 5 MB (margen para overhead multipart)
-client_max_body_size 6m;
+# Adjuntos ≤ 15 MB (margen para overhead multipart)
+client_max_body_size 16m;
 
-# Timeouts de proxy
+# Timeouts de proxy (90 s cubre subidas de adjuntos de hasta 15 MB)
 proxy_connect_timeout 10s;
-proxy_send_timeout    30s;
-proxy_read_timeout    30s;
+proxy_send_timeout    90s;
+proxy_read_timeout    90s;
 
 # Cabeceras estándar hacia los upstreams
 proxy_set_header Host              $proxy_host;

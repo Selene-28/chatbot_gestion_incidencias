@@ -206,7 +206,7 @@ CREATE TABLE ticket_adjuntos (
   nombre_original VARCHAR(255) NOT NULL,
   ruta_almacenada VARCHAR(500) NOT NULL COMMENT 'fuera del árbol web, nombre aleatorio',
   mime_type       VARCHAR(100) NOT NULL COMMENT 'image/jpeg|image/png|application/pdf (RF-13)',
-  tamano_bytes    INT UNSIGNED NOT NULL COMMENT 'máx 5 MB',
+  tamano_bytes    INT UNSIGNED NOT NULL COMMENT 'máx 15 MB por archivo (RF-13)',
   created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

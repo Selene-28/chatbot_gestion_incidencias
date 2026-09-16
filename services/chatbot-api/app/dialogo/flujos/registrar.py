@@ -54,7 +54,7 @@ _ORDEN_PASOS: tuple[tuple[str, str], ...] = (
     ("categoria", "categoria"),
     ("descripcion", "descripcion"),
     ("prioridad", "prioridad"),
-    ("adjunto", "adjunto_id"),
+    ("adjunto", "adjunto_ids"),
 )
 
 _CAMPOS_CORREGIBLES: list[tuple[str, str]] = [
@@ -99,8 +99,8 @@ def _prompt(paso: str) -> MensajeBot:
         "adjunto": MensajeBot(
             tipo="adjunto",
             texto=(
-                "¿Deseas adjuntar evidencia? Puedes subir una imagen JPG/PNG "
-                "o un PDF de hasta 5 MB."
+                "¿Deseas adjuntar evidencia? Puedes subir hasta 8 archivos: "
+                "por ejemplo 2 PDF y varias fotos JPG/PNG. Cada archivo hasta 15 MB."
             ),
             opciones=[Opcion(id="omitir", texto="Omitir")],
         ),
@@ -108,9 +108,42 @@ def _prompt(paso: str) -> MensajeBot:
     return prompts[paso]
 
 
+_MAX_ADJUNTOS = 8
+
+
+def _prompt_adjunto(datos: dict[str, Any]) -> MensajeBot:
+    """Ofrece subir evidencia; si ya hay archivos, permite agregar más o seguir."""
+    n = len(datos.get("adjunto_ids") or [])
+    if n == 0:
+        return _prompt("adjunto")
+    if n >= _MAX_ADJUNTOS:
+        return con_opciones(
+            f"Alcanzaste el máximo de {_MAX_ADJUNTOS} archivos. Pulsa Continuar para confirmar.",
+            [("continuar", "Continuar")],
+        )
+    restantes = _MAX_ADJUNTOS - n
+    return MensajeBot(
+        tipo="adjunto",
+        texto=(
+            f"Llevas {n} archivo(s). Puedes adjuntar otro "
+            f"(quedan {restantes} de {_MAX_ADJUNTOS}, 15 MB c/u) o continuar."
+        ),
+        opciones=[
+            Opcion(id="continuar", texto="Continuar"),
+            Opcion(id="omitir", texto="No adjuntar más"),
+        ],
+    )
+
+
 def _resumen(conv: Conversacion, datos: dict[str, Any]) -> MensajeBot:
     """Resumen de los datos capturados + Confirmar / Corregir / Cancelar."""
-    adjunto = "Sí (1 archivo)" if datos.get("adjunto_id") else "Sin adjunto"
+    n = len(datos.get("adjunto_ids") or [])
+    if n == 0:
+        adjunto = "Sin adjunto"
+    elif n == 1:
+        adjunto = "Sí (1 archivo)"
+    else:
+        adjunto = f"Sí ({n} archivos)"
     texto = (
         "Por favor, confirma los datos de tu incidencia:\n\n"
         f"• Nombre: {datos.get('nombre')}\n"
@@ -180,6 +213,8 @@ class FlujoRegistrar:
         siguiente = self._siguiente_pendiente(ctx["datos"], siguiente)
         if siguiente == "confirmacion":
             return self._a_confirmacion(conv, ctx)
+        if siguiente == "adjunto":
+            return Resultado(mensajes=[_prompt_adjunto(ctx["datos"])], paso="adjunto")
         return Resultado(mensajes=[_prompt(siguiente)], paso=siguiente)
 
     @staticmethod
@@ -289,8 +324,19 @@ class FlujoRegistrar:
     def _paso_adjunto(
         self, conv: Conversacion, entrada: Entrada, ctx: dict[str, Any]
     ) -> Resultado:
+        ids: list[str] = list(ctx["datos"].get("adjunto_ids") or [])
         if entrada.opcion_id == OPCION_ADJUNTO and entrada.adjunto_id:
-            ctx["datos"]["adjunto_id"] = entrada.adjunto_id
+            if entrada.adjunto_id not in ids:
+                if len(ids) >= _MAX_ADJUNTOS:
+                    return self._invalida(
+                        f"Ya alcanzaste el máximo de {_MAX_ADJUNTOS} archivos.",
+                        _prompt_adjunto(ctx["datos"]),
+                    )
+                ids.append(entrada.adjunto_id)
+            ctx["datos"]["adjunto_ids"] = ids
+            ctx["datos"].pop("_corrigiendo", None)
+            return Resultado(mensajes=[_prompt_adjunto(ctx["datos"])], paso="adjunto")
+        if entrada.opcion_id in ("continuar", "listo"):
             ctx["datos"].pop("_corrigiendo", None)
             return self._a_confirmacion(conv, ctx)
         # "__omitir__": id que envía el botón Omitir propio del widget (ver widget/README.md)
@@ -300,13 +346,16 @@ class FlujoRegistrar:
             "omitir",
             "no",
             "no gracias",
+            "no adjuntar mas",
+            "continuar",
         ):
-            ctx["datos"].pop("adjunto_id", None)
+            if not ids:
+                ctx["datos"].pop("adjunto_ids", None)
             ctx["datos"].pop("_corrigiendo", None)
             return self._a_confirmacion(conv, ctx)
         return self._invalida(
-            'Sube un archivo JPG/PNG/PDF de hasta 5 MB o pulsa "Omitir".',
-            _prompt("adjunto"),
+            'Sube un JPG/PNG/PDF de hasta 15 MB, pulsa "Continuar" o "Omitir".',
+            _prompt_adjunto(ctx["datos"]),
         )
 
     # -------------------------------------------------------- confirmación/creación
@@ -349,6 +398,7 @@ class FlujoRegistrar:
         # caracteres (misma cota que aquí); el prefijo no debe hacerla exceder.
         espacio_disponible = 2000 - len(prefijo_codigo)
         descripcion_con_codigo = prefijo_codigo + datos["descripcion"][:espacio_disponible]
+        ids = list(datos.get("adjunto_ids") or [])
         payload = {
             "nombre": datos["nombre"],
             "correo": datos["correo"],
@@ -358,7 +408,8 @@ class FlujoRegistrar:
             "prioridad": datos.get("prioridad") or validaciones.PRIORIDAD_DEFAULT,
             "origen": "chatbot",
             "conversacionCodigo": conv.codigo,
-            "adjuntoId": datos.get("adjunto_id"),
+            "adjuntoId": ids[0] if ids else None,
+            "adjuntoIds": ids or None,
         }
         try:
             data = await deps.tickets.registrar_incidencia(payload, datos["idempotency_key"])
@@ -393,6 +444,8 @@ class FlujoRegistrar:
         if opcion.startswith("campo_"):
             paso = opcion.removeprefix("campo_")
             ctx["datos"]["_corrigiendo"] = True
+            if paso == "adjunto":
+                return Resultado(mensajes=[_prompt_adjunto(ctx["datos"])], paso=paso)
             return Resultado(mensajes=[_prompt(paso)], paso=paso)
         return self._invalida(
             "Por favor, indica qué campo deseas corregir.",
