@@ -12,7 +12,9 @@
 
   <dl class="datos">
     <dt>Solicitante</dt>
-    <dd>{{ ticket.usuario.nombre }} ({{ ticket.usuario.correo }})</dd>
+    <dd>{{ ticket.usuario.nombre }}</dd>
+    <dt>Correo</dt>
+    <dd>{% set c = ticket.usuario.correo or '' %}{% set local = c[:-12] if c.endswith('@unac.edu.pe') else c %}{% if c and not (local.isdigit() and local|length == 10) %}{{ c }}{% endif %}</dd>
     <dt>Categoría</dt>
     <dd>{{ ticket.categoria.nombre }}{% if ticket.subcategoria %} · {{ ticket.subcategoria }}{% endif %}</dd>
     <dt>Prioridad</dt>
