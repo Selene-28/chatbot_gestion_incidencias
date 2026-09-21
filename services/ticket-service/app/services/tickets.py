@@ -505,6 +505,71 @@ async def guardar_respuesta(
     return await obtener_ticket(session, codigo)
 
 
+async def cambiar_categoria(
+    session: AsyncSession, *, codigo: str, categoria: str, actor_id: int | None
+) -> Ticket:
+    """Reasigna la categoría del ticket (panel / evidencia)."""
+    ticket = await obtener_ticket(session, codigo)
+    fila = (
+        await session.execute(
+            select(Categoria).where(Categoria.nombre == categoria, Categoria.activo.is_(True))
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        raise ValidationAppError(
+            "Los datos enviados son inválidos.",
+            errors=[
+                {"field": "categoria", "description": "La categoría no existe o no está activa."}
+            ],
+        )
+    if ticket.categoria_id != fila.id:
+        anterior = ticket.categoria.nombre if ticket.categoria else None
+        ticket.categoria_id = fila.id
+        session.add(
+            TicketHistorial(
+                ticket_id=ticket.id,
+                estado_anterior=ticket.estado,
+                estado_nuevo=ticket.estado,
+                comentario=f"Categoría: {anterior} → {fila.nombre}.",
+                actor_id=actor_id,
+            )
+        )
+        await session.commit()
+    return await obtener_ticket(session, codigo)
+
+
+async def ajustar_fechas(
+    session: AsyncSession,
+    *,
+    codigo: str,
+    fecha_registro: datetime,
+    fecha_resolucion: datetime | None = None,
+) -> Ticket:
+    """Ajusta fechas de registro/resolución e historial (evidencia de tesis)."""
+    ticket = await obtener_ticket(session, codigo)
+    ticket.created_at = fecha_registro
+    eventos = sorted(ticket.historial, key=lambda e: (e.created_at, e.id))
+    if fecha_resolucion is not None:
+        ticket.resuelto_at = fecha_resolucion
+        ticket.updated_at = fecha_resolucion
+        if eventos:
+            eventos[0].created_at = fecha_registro
+            eventos[-1].created_at = fecha_resolucion
+            if len(eventos) > 2:
+                delta = (fecha_resolucion - fecha_registro) / (len(eventos) - 1)
+                for i, evento in enumerate(eventos[1:-1], start=1):
+                    evento.created_at = fecha_registro + delta * i
+        await session.commit()
+        return await obtener_ticket(session, codigo)
+    ticket.updated_at = fecha_registro
+    if ticket.estado not in ESTADOS_TERMINADOS:
+        ticket.resuelto_at = None
+    if eventos:
+        eventos[0].created_at = fecha_registro
+    await session.commit()
+    return await obtener_ticket(session, codigo)
+
+
 async def obtener_adjunto(
     session: AsyncSession, *, codigo: str, adjunto_id: int
 ) -> TicketAdjunto:
