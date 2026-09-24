@@ -509,6 +509,9 @@ def test_metricas_admin_renderiza(admin: TestClient) -> None:
     assert r.status_code == 200
     assert "métricas" in r.text.lower()
     assert "/api/metricas/resumen" in r.text
+    assert "2026-07-27" in r.text
+    assert "2026-09-06" in r.text
+    assert "Tickets por categoría" in r.text
 
 
 # --------------------------------------------------------------------------- #

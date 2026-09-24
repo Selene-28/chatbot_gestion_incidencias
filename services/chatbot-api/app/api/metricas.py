@@ -132,6 +132,11 @@ async def resumen(
         "calificacionProm": tickets_data.get("calificacionProm"),
         "encuestas": int(tickets_data.get("encuestas") or 0),
         "ticketsPorEstado": tickets_data.get("ticketsPorEstado") or {},
+        "ticketsPorCategoria": tickets_data.get("ticketsPorCategoria") or {},
+        "ticketsTotal": int(
+            tickets_data.get("ticketsTotal")
+            or sum(int(v) for v in (tickets_data.get("ticketsPorEstado") or {}).values())
+        ),
         "intentsTop": intents_top,
         "tokensLlm": llm.tokens_consumidos(),
     }

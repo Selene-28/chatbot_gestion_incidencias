@@ -200,6 +200,8 @@ Cumplido **internamente**: `chatbot-api` persiste cada mensaje en `mensajes` (RF
     "tasaAutoservicio": 0.63, "latenciaPromMs": 820,
     "calificacionProm": 4.4, "encuestas": 180,
     "ticketsPorEstado": { "Registrado": 12, "En Proceso": 30, "Escalado": 4, "Resuelto": 95, "Cerrado": 80 },
+    "ticketsPorCategoria": { "Internet/WiFi": 61, "SGA": 48 },
+    "ticketsTotal": 221,
     "intentsTop": [ { "intent": "recuperar_correo", "total": 96 } ]
 } }
 ```

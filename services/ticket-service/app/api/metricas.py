@@ -6,6 +6,8 @@ los tickets, encuestas y la vista v_satisfaccion viven en tickets_db.
 
 Devuelve, en el rango de fechas (inclusive):
   - ``ticketsPorEstado``: conteo de tickets por estado (por fecha de registro)
+  - ``ticketsPorCategoria``: conteo por categoría
+  - ``ticketsTotal``: suma de incidencias del rango
   - ``calificacionProm``: promedio de calificaciones de encuestas (o null)
   - ``encuestas``: número de encuestas registradas
 """
@@ -20,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.envelope import ok
 from app.core.security import require_api_key
-from app.models import Encuesta, Ticket
+from app.models import Categoria, Encuesta, Ticket
 
 router = APIRouter(
     prefix="/api/metricas", tags=["metricas"], dependencies=[Depends(require_api_key)]
@@ -47,6 +49,17 @@ async def metricas_tickets(session: SessionDep, desde: str, hasta: str) -> JSONR
     ).all()
     tickets_por_estado = {estado: total for estado, total in por_estado_filas}
 
+    por_categoria_filas = (
+        await session.execute(
+            select(Categoria.nombre, func.count())
+            .join(Ticket, Ticket.categoria_id == Categoria.id)
+            .where(Ticket.created_at >= desde, Ticket.created_at <= hasta_fin)
+            .group_by(Categoria.nombre)
+            .order_by(func.count().desc())
+        )
+    ).all()
+    tickets_por_categoria = {nombre: total for nombre, total in por_categoria_filas}
+
     encuesta_fila = (
         await session.execute(
             select(func.avg(Encuesta.calificacion), func.count()).where(
@@ -60,6 +73,8 @@ async def metricas_tickets(session: SessionDep, desde: str, hasta: str) -> JSONR
     return ok(
         {
             "ticketsPorEstado": tickets_por_estado,
+            "ticketsPorCategoria": tickets_por_categoria,
+            "ticketsTotal": sum(tickets_por_estado.values()),
             "calificacionProm": calificacion_prom,
             "encuestas": int(n_encuestas or 0),
         }

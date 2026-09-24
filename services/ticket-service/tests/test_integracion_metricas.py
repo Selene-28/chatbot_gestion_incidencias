@@ -43,6 +43,8 @@ async def test_metricas_cuenta_estados_y_satisfaccion(api_client) -> None:
     data = r.json()["data"]
 
     assert data["ticketsPorEstado"].get("Registrado", 0) >= 1
+    assert data["ticketsTotal"] >= 1
+    assert data["ticketsPorCategoria"].get("Correo Institucional", 0) >= 1
     assert data["encuestas"] >= 1
     assert 1.0 <= data["calificacionProm"] <= 5.0
 
@@ -55,5 +57,7 @@ async def test_metricas_rango_vacio_degrada_a_neutro(api_client) -> None:
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["ticketsPorEstado"] == {}
+    assert data["ticketsPorCategoria"] == {}
+    assert data["ticketsTotal"] == 0
     assert data["encuestas"] == 0
     assert data["calificacionProm"] is None

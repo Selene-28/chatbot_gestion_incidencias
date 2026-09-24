@@ -179,8 +179,8 @@ class TicketsClient:
     async def resumen_metricas(self, desde: str, hasta: str) -> dict[str, Any]:
         """Métricas del lado de tickets para /api/metricas/resumen (RF-14).
 
-        Devuelve ``ticketsPorEstado`` (conteo por estado), ``calificacionProm`` y
-        ``encuestas`` (vista v_satisfaccion de tickets_db) en el rango de fechas.
+        Devuelve ``ticketsPorEstado``, ``ticketsPorCategoria``, ``ticketsTotal``,
+        ``calificacionProm`` y ``encuestas`` en el rango de fechas.
 
         TODO(ticket-service): expone ``GET /api/metricas/tickets?desde&hasta``.
         Mientras no exista, la llamada devolverá 404 y el endpoint de métricas

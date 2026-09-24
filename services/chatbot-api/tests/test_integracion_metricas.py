@@ -17,6 +17,8 @@ class _FakeMetricasTickets:
     async def resumen_metricas(self, desde: str, hasta: str) -> dict:
         return {
             "ticketsPorEstado": {"Registrado": 2, "Resuelto": 5},
+            "ticketsPorCategoria": {"Correo Institucional": 4, "SGA": 3},
+            "ticketsTotal": 7,
             "calificacionProm": 4.5,
             "encuestas": 7,
         }
@@ -62,6 +64,8 @@ async def test_resumen_formato_y_datos(api_client, sesion, monkeypatch):
         "calificacionProm",
         "encuestas",
         "ticketsPorEstado",
+        "ticketsPorCategoria",
+        "ticketsTotal",
         "intentsTop",
         "tokensLlm",
     }
@@ -72,6 +76,8 @@ async def test_resumen_formato_y_datos(api_client, sesion, monkeypatch):
     assert all({"intent", "total"} <= set(i) for i in data["intentsTop"])
     # provenientes del cliente de tickets (doble)
     assert data["ticketsPorEstado"] == {"Registrado": 2, "Resuelto": 5}
+    assert data["ticketsPorCategoria"] == {"Correo Institucional": 4, "SGA": 3}
+    assert data["ticketsTotal"] == 7
     assert data["calificacionProm"] == 4.5
     assert data["encuestas"] == 7
     # sin API key en tests → contador de tokens en 0
