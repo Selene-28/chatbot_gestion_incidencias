@@ -89,6 +89,7 @@ async def registrar_incidencia(
         origen=payload.origen,
         conversacion_codigo=payload.conversacion_codigo,
         adjunto_id=payload.adjunto_id,
+        adjunto_ids=payload.adjunto_ids,
         idempotency_key=idempotency_key,
     )
     return ok(
@@ -101,7 +102,7 @@ async def registrar_incidencia(
 @router.post("/adjuntos")
 async def subir_adjunto(
     session: SessionDep,
-    file: Annotated[UploadFile, File(description="JPG/JPEG/PNG/PDF, máx. 5 MB")],
+    file: Annotated[UploadFile, File(description="JPG/JPEG/PNG/PDF, máx. 15 MB")],
 ) -> JSONResponse:
     """API-01b: sube un adjunto previo al registro; valida MIME real y tamaño (RF-13)."""
     contenido = await file.read()

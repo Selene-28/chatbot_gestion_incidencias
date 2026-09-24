@@ -10,6 +10,8 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
+from app.services.adjuntos import TAMANO_MAXIMO_BYTES
+
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 
 CUERPO_VALIDO = {
@@ -101,8 +103,8 @@ async def test_api01b_rechaza_tipo_por_firma(api_client) -> None:
     assert any("JPG" in e["description"] for e in respuesta.json()["errors"])
 
 
-async def test_api01b_rechaza_mayor_a_5mb(api_client) -> None:
-    grande = b"\x89PNG\r\n\x1a\n" + b"\x00" * (5 * 1024 * 1024)
+async def test_api01b_rechaza_mayor_al_maximo(api_client) -> None:
+    grande = b"\x89PNG\r\n\x1a\n" + b"\x00" * TAMANO_MAXIMO_BYTES
     respuesta = await api_client.post(
         "/api/incidencias/adjuntos", files={"file": ("grande.png", grande, "image/png")}
     )

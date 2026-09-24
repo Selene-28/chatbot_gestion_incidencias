@@ -156,7 +156,7 @@ async def enviar_mensaje(
 @router.post("/adjuntos")
 async def subir_adjunto(
     session: SessionDep,
-    file: Annotated[UploadFile, File(description="JPG/JPEG/PNG/PDF, máx. 5 MB")],
+    file: Annotated[UploadFile, File(description="JPG/JPEG/PNG/PDF, máx. 15 MB")],
     x_session_token: TokenDep = None,
 ) -> JSONResponse:
     """Proxy hacia API-01b del ticket-service (el widget nunca ve la X-Api-Key)."""

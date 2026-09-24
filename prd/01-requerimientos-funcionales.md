@@ -20,7 +20,7 @@ Fuente: DRS (`docs/`). Este documento normaliza los requerimientos con IDs traza
 | RF-10 | Gestión de fallback | 1er error: mensaje de fallo 1. 2do error consecutivo: mensaje de fallo 2 + menú con botones fijos. 3er error: handoff automático (RF-06). El contador se reinicia con cada mensaje comprendido. | Alta | Flujo F-09 |
 | RF-11 | Panel de agentes | Personal CTIC autenticado puede: ver cola de handoffs y chatear con el usuario; listar/filtrar tickets; cambiar estado, asignar técnico, registrar una respuesta (máx. 1000) y descargar adjuntos; cerrar handoffs (lo que reactiva el bot). | Alta | `ticket-service` |
 | RF-12 | Gestión de base de conocimiento | El administrador puede crear/editar/desactivar artículos FAQ; los cambios se reindexan en el motor de búsqueda semántica sin reiniciar el servicio (REN-06). | Media | `prd/06` §4 |
-| RF-13 | Adjuntos | Solo JPG, JPEG, PNG y PDF (LF-08); tamaño máximo 5 MB por archivo; se almacenan fuera del árbol web y se sirven solo a usuarios autorizados (panel: descarga autenticada). | Media | API-01 |
+| RF-13 | Adjuntos | Solo JPG, JPEG, PNG y PDF (LF-08); hasta **8 archivos** por incidencia (p. ej. 2 PDF y varias fotos); tamaño máximo **15 MB** por archivo; se almacenan fuera del árbol web y se sirven solo a usuarios autorizados (panel: descarga autenticada). | Media | API-01 |
 | RF-14 | Métricas | Endpoint y vistas SQL con: volumen de conversaciones, intents más frecuentes, tasa de autoservicio, tiempos de respuesta, calificación promedio, tickets por estado/categoría. | Media | `prd/04` §8 |
 | RF-15 | Identificación del usuario | Antes de registrar o consultar incidencias, el bot solicita y valida el correo institucional (`*@unac.edu.pe`, formato RFC 5322). La sesión de chat queda asociada a ese correo (SEG-01). | Alta | Flujo F-02/F-03 |
 
@@ -78,7 +78,7 @@ El usuario siempre puede escribir libremente; el router de intenciones decide (v
 | Categoría | Selección de la tabla `categorias` (activas). |
 | Descripción | 10–2000 caracteres. Si el mensaje es excesivamente extenso o ambiguo, el bot pide reformular (LF-03). |
 | Prioridad | Baja / Media / Alta (default: Media). La prioridad final la confirma el técnico. |
-| Adjunto | JPG/JPEG/PNG/PDF, ≤ 5 MB, validación por MIME real (no solo extensión). |
+| Adjunto | JPG/JPEG/PNG/PDF, hasta 8 archivos, ≤ 15 MB c/u, validación por MIME real (no solo extensión). |
 | Nº de ticket | Formato `INC-AAAA-NNNN`. |
 | Calificación | Entero 1–5. |
 | Toda entrada libre | Sanitización anti-XSS/inyección (SEG-04): se almacena texto plano, se escapa al renderizar, queries siempre parametrizadas. |

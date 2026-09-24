@@ -14,8 +14,6 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
-from app.core.config import get_settings
 from app.core.errors import (
     ConflictError,
     ForbiddenError,
@@ -38,6 +36,7 @@ from app.models import (
     Usuario,
 )
 from app.schemas import comunes
+from app.services.adjuntos import MAX_ADJUNTOS_POR_TICKET, directorio_uploads
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +87,9 @@ async def registrar_incidencia(
     prioridad: str,
     origen: str,
     conversacion_codigo: str | None,
-    adjunto_id: str | None,
-    idempotency_key: str | None,
+    adjunto_id: str | None = None,
+    adjunto_ids: list[str] | None = None,
+    idempotency_key: str | None = None,
 ) -> Ticket:
     """Registra una incidencia con código único INC-AAAA-NNNN (RN-01).
 
@@ -148,8 +148,23 @@ async def registrar_incidencia(
         )
     )
 
-    if adjunto_id:
-        await _adjuntar_desde_staging(session, ticket_id=ticket.id, adjunto_id=adjunto_id)
+    ids: list[str] = list(adjunto_ids or [])
+    if adjunto_id and adjunto_id not in ids:
+        ids.insert(0, adjunto_id)
+    if len(ids) > MAX_ADJUNTOS_POR_TICKET:
+        raise ValidationAppError(
+            "Los datos enviados son inválidos.",
+            errors=[
+                {
+                    "field": "adjuntoIds",
+                    "description": (
+                        f"Puedes adjuntar como máximo {MAX_ADJUNTOS_POR_TICKET} archivos."
+                    ),
+                }
+            ],
+        )
+    for identificador in ids:
+        await _adjuntar_desde_staging(session, ticket_id=ticket.id, adjunto_id=identificador)
 
     if idempotency_key:
         session.add(IdempotencyKey(clave=idempotency_key, ticket_codigo=codigo))
@@ -262,7 +277,7 @@ async def _adjuntar_desde_staging(
                 {"field": "adjuntoId", "description": "El archivo adjunto ya no está disponible."}
             ],
         )
-    destino_dir = Path(get_settings().UPLOADS_DIR) / "tickets"
+    destino_dir = directorio_uploads() / "tickets"
     destino_dir.mkdir(parents=True, exist_ok=True)
     destino = destino_dir / origen.name
     shutil.move(str(origen), str(destino))
@@ -486,6 +501,71 @@ async def guardar_respuesta(
             actor_id=actor_id,
         )
     )
+    await session.commit()
+    return await obtener_ticket(session, codigo)
+
+
+async def cambiar_categoria(
+    session: AsyncSession, *, codigo: str, categoria: str, actor_id: int | None
+) -> Ticket:
+    """Reasigna la categoría del ticket (panel / evidencia)."""
+    ticket = await obtener_ticket(session, codigo)
+    fila = (
+        await session.execute(
+            select(Categoria).where(Categoria.nombre == categoria, Categoria.activo.is_(True))
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        raise ValidationAppError(
+            "Los datos enviados son inválidos.",
+            errors=[
+                {"field": "categoria", "description": "La categoría no existe o no está activa."}
+            ],
+        )
+    if ticket.categoria_id != fila.id:
+        anterior = ticket.categoria.nombre if ticket.categoria else None
+        ticket.categoria_id = fila.id
+        session.add(
+            TicketHistorial(
+                ticket_id=ticket.id,
+                estado_anterior=ticket.estado,
+                estado_nuevo=ticket.estado,
+                comentario=f"Categoría: {anterior} → {fila.nombre}.",
+                actor_id=actor_id,
+            )
+        )
+        await session.commit()
+    return await obtener_ticket(session, codigo)
+
+
+async def ajustar_fechas(
+    session: AsyncSession,
+    *,
+    codigo: str,
+    fecha_registro: datetime,
+    fecha_resolucion: datetime | None = None,
+) -> Ticket:
+    """Ajusta fechas de registro/resolución e historial (evidencia de tesis)."""
+    ticket = await obtener_ticket(session, codigo)
+    ticket.created_at = fecha_registro
+    eventos = sorted(ticket.historial, key=lambda e: (e.created_at, e.id))
+    if fecha_resolucion is not None:
+        ticket.resuelto_at = fecha_resolucion
+        ticket.updated_at = fecha_resolucion
+        if eventos:
+            eventos[0].created_at = fecha_registro
+            eventos[-1].created_at = fecha_resolucion
+            if len(eventos) > 2:
+                delta = (fecha_resolucion - fecha_registro) / (len(eventos) - 1)
+                for i, evento in enumerate(eventos[1:-1], start=1):
+                    evento.created_at = fecha_registro + delta * i
+        await session.commit()
+        return await obtener_ticket(session, codigo)
+    ticket.updated_at = fecha_registro
+    if ticket.estado not in ESTADOS_TERMINADOS:
+        ticket.resuelto_at = None
+    if eventos:
+        eventos[0].created_at = fecha_registro
     await session.commit()
     return await obtener_ticket(session, codigo)
 

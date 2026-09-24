@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
+from app.core.mysql_url import url_mysql_railway
 from app.ia.indexado import reindexar_todo
 from app.models import KbArticulo
 from app.scripts.datos_kb import ARTICULOS
@@ -63,7 +64,7 @@ async def upsert_articulos(session: AsyncSession) -> tuple[int, int, int]:
 async def main() -> None:
     """Sesión propia (no reutiliza el pool de la app) + resumen por stdout."""
     settings = get_settings()
-    engine = create_async_engine(settings.DB_URL)
+    engine = create_async_engine(url_mysql_railway(settings.DB_URL))
     fabrica = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with fabrica() as session:

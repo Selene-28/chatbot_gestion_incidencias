@@ -239,6 +239,8 @@ cd ../../e2e && uv run pytest -q                         # → "QA-01..QA-11: 11
 | [manuales/01-despliegue.md](manuales/01-despliegue.md) — instalación en servidor, TLS, backups, monitoreo | DevOps / TI |
 | [manuales/02-manual-del-panel.md](manuales/02-manual-del-panel.md) — uso del panel paso a paso | Personal CTIC |
 | [manuales/03-integracion-sistema-real.md](manuales/03-integracion-sistema-real.md) — contrato REST para conectar el sistema de tickets real | Equipo de desarrollo UNAC |
+| [manuales/04-integracion-wordpress-fiis.md](manuales/04-integracion-wordpress-fiis.md) — botón flotante en WordPress | Webmaster FIIS |
+| [manuales/06-railway-paso-a-paso.md](manuales/06-railway-paso-a-paso.md) — publicar en Railway (sin Docker en el PC) | Tesista / demo en internet |
 
 ## Decisiones técnicas (resumen)
 

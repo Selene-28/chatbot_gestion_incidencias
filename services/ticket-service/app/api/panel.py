@@ -6,6 +6,7 @@ Todas las rutas exigen staff autenticado vía cookie ``panel_token``
 handler global, que los traduce al envelope estándar.
 """
 
+from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
@@ -98,6 +99,9 @@ class PatchTicketRequest(BaseModel):
     tecnico_id: int | None = Field(default=None, alias="tecnicoId")
     comentario: str | None = Field(default=None, max_length=comunes.COMENTARIO_MAX)
     respuesta: str | None = Field(default=None, max_length=comunes.RESPUESTA_MAX)
+    categoria: str | None = Field(default=None, max_length=80)
+    fecha_registro: datetime | None = Field(default=None, alias="fechaRegistro")
+    fecha_resolucion: datetime | None = Field(default=None, alias="fechaResolucion")
 
 
 @router.get("/tickets")
@@ -137,9 +141,15 @@ async def actualizar_ticket(
     Orden: primero la asignación y luego el estado. El panel admite cualquiera
     de los seis estados (``libre=True``); un estado inexistente sigue en 400.
     """
-    if body.estado is None and body.tecnico_id is None and body.respuesta is None:
+    if (
+        body.estado is None
+        and body.tecnico_id is None
+        and body.respuesta is None
+        and body.categoria is None
+        and body.fecha_registro is None
+    ):
         raise ValidationAppError(
-            "Debe indicar al menos un cambio (estado, tecnicoId o respuesta).",
+            "Debe indicar al menos un cambio (estado, tecnicoId, respuesta, categoria o fecha).",
             [{"field": "estado", "description": "No se indicó ningún cambio a aplicar."}],
         )
     servicio = _servicio_tickets()
@@ -160,6 +170,17 @@ async def actualizar_ticket(
     if body.respuesta is not None:
         ticket = await servicio.guardar_respuesta(
             session, codigo=ticket_id, texto=body.respuesta, actor_id=staff.id
+        )
+    if body.categoria is not None:
+        ticket = await servicio.cambiar_categoria(
+            session, codigo=ticket_id, categoria=body.categoria, actor_id=staff.id
+        )
+    if body.fecha_registro is not None:
+        ticket = await servicio.ajustar_fechas(
+            session,
+            codigo=ticket_id,
+            fecha_registro=body.fecha_registro,
+            fecha_resolucion=body.fecha_resolucion,
         )
     return ok(_ticket_detalle(ticket), "El ticket fue actualizado correctamente.")
 

@@ -374,7 +374,7 @@ Recomendaciones:
 | El bot no responde preguntas abiertas (siempre cae a fallback) | LLM en modo degradado, o la KB no está indexada | Revisar `/healthz`; ejecutar `python -m app.scripts.cargar_kb` / `reindex`. |
 | Los mensajes del agente no llegan al usuario en vivo (SSE) | Buffering del proxy o timeout corto en la ruta SSE | El bloque `location /api/chat/` de Nginx ya desactiva buffering y usa `proxy_read_timeout 1h`. Verificar que no haya otro proxy/CDN intermedio que corte conexiones largas o haga buffer. |
 | Imagen de Docker muy grande / build lento | El modelo de embeddings se descarga en build (capa cacheada) | Es esperado la primera vez. Los builds siguientes reutilizan la capa. No borrar la caché de Docker innecesariamente. |
-| Adjuntos rechazados | Tamaño > 5 MB o tipo no permitido | Se aceptan JPG/JPEG/PNG/PDF ≤ 5 MB. Nginx limita el cuerpo a 6 MB (`client_max_body_size`). |
+| Adjuntos rechazados | Tamaño > 15 MB o tipo no permitido | Se aceptan JPG/JPEG/PNG/PDF ≤ 15 MB, hasta 8 archivos por incidencia. Nginx limita el cuerpo a 16 MB (`client_max_body_size`). |
 
 ---
 

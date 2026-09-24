@@ -112,6 +112,27 @@ class ServicioFalso:
         self.ticket.respuesta = texto
         return self.ticket
 
+    async def cambiar_categoria(
+        self, session: Any, *, codigo: str, categoria: str, actor_id: int | None
+    ) -> Any:
+        self.llamadas.append(("cambiar_categoria", codigo, categoria, actor_id))
+        self.ticket.categoria = SimpleNamespace(id=9, nombre=categoria)
+        return self.ticket
+
+    async def ajustar_fechas(
+        self,
+        session: Any,
+        *,
+        codigo: str,
+        fecha_registro: datetime,
+        fecha_resolucion: datetime | None = None,
+    ) -> Any:
+        self.llamadas.append(("ajustar_fechas", codigo, fecha_registro, fecha_resolucion))
+        self.ticket.created_at = fecha_registro
+        if fecha_resolucion is not None:
+            self.ticket.updated_at = fecha_resolucion
+        return self.ticket
+
     async def obtener_adjunto(self, session: Any, *, codigo: str, adjunto_id: int) -> Any:
         self.llamadas.append(("obtener_adjunto", codigo, adjunto_id))
         for adjunto in self.ticket.adjuntos:
@@ -344,7 +365,7 @@ def test_detalle_muestra_seccion_respuesta_y_adjuntos(
     assert "<h2>Respuesta</h2>" in r.text
     assert 'name="respuesta"' in r.text
     assert 'maxlength="1000"' in r.text
-    assert "<h2>Archivo adjunto</h2>" in r.text
+    assert "<h2>Archivos adjuntos</h2>" in r.text
     assert "Esta incidencia no tiene archivos adjuntos." in r.text
 
 
@@ -488,6 +509,9 @@ def test_metricas_admin_renderiza(admin: TestClient) -> None:
     assert r.status_code == 200
     assert "métricas" in r.text.lower()
     assert "/api/metricas/resumen" in r.text
+    assert "2026-07-27" in r.text
+    assert "2026-09-06" in r.text
+    assert "Tickets por categoría" in r.text
 
 
 # --------------------------------------------------------------------------- #
@@ -567,6 +591,17 @@ def test_api_patch_sin_cambios_400(autenticado: TestClient, servicio: ServicioFa
         "/api/panel/tickets/INC-2026-0001", json={"comentario": "solo comentario"}
     )
     assert r.status_code == 400
+
+
+def test_api_patch_cambia_categoria(
+    autenticado: TestClient, servicio: ServicioFalso
+) -> None:
+    r = autenticado.patch(
+        "/api/panel/tickets/INC-2026-0001", json={"categoria": "SGA"}
+    )
+    assert r.status_code == 200
+    assert ("cambiar_categoria", "INC-2026-0001", "SGA", STAFF.id) in servicio.llamadas
+    assert r.json()["data"]["categoria"] == "SGA"
 
 
 def test_api_404_propagado(autenticado: TestClient, servicio: ServicioFalso) -> None:

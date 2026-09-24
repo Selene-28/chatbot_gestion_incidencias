@@ -54,7 +54,8 @@ Códigos: `200` OK, `201` creado, `400` validación, `401` no autenticado, `403`
   "prioridad": "Media",
   "origen": "chatbot",
   "conversacionCodigo": "3f2a...-uuid",
-  "adjuntoId": "adj_9f31"        // opcional, ver API-01b
+  "adjuntoId": "adj_9f31",       // opcional, ver API-01b
+  "adjuntoIds": ["adj_9f31"]     // opcional; hasta 8 ids (se fusiona con adjuntoId)
 }
 ```
 ```json
@@ -66,7 +67,7 @@ Notas: si el `correo` no existe en `usuarios`, se crea el usuario (rol `usuario`
 
 ### API-01b · Subir adjunto (previo al registro)
 `POST /api/incidencias/adjuntos` — `multipart/form-data`, campo `file`.
-Valida MIME real (JPG/JPEG/PNG/PDF) y tamaño ≤ 5 MB (RF-13). Devuelve `{ "adjuntoId": "adj_9f31" }`. Los adjuntos huérfanos (> 24 h sin ticket) se purgan con un job.
+Valida MIME real (JPG/JPEG/PNG/PDF) y tamaño ≤ 15 MB (RF-13). Devuelve `{ "adjuntoId": "adj_9f31" }`. Se pueden asociar hasta 8 identificadores en API-01 (`adjuntoId` y/o `adjuntoIds`). Los adjuntos huérfanos (> 24 h sin ticket) se purgan con un job.
 
 ### API-02 · Consultar estado
 `GET /api/incidencias/{ticketId}?correo={correo}` — auth: `X-Api-Key`
@@ -199,6 +200,8 @@ Cumplido **internamente**: `chatbot-api` persiste cada mensaje en `mensajes` (RF
     "tasaAutoservicio": 0.63, "latenciaPromMs": 820,
     "calificacionProm": 4.4, "encuestas": 180,
     "ticketsPorEstado": { "Registrado": 12, "En Proceso": 30, "Escalado": 4, "Resuelto": 95, "Cerrado": 80 },
+    "ticketsPorCategoria": { "Internet/WiFi": 61, "SGA": 48 },
+    "ticketsTotal": 221,
     "intentsTop": [ { "intent": "recuperar_correo", "total": 96 } ]
 } }
 ```

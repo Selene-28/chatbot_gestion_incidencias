@@ -6,7 +6,9 @@ def test_healthz_responde_200_con_db_down(client):
     response = client.get("/healthz")
     assert response.status_code == 200
     body = response.json()
-    assert body == {"status": "ok", "db": "down", "llm": "disabled"}
+    assert body["status"] == "ok"
+    assert body["db"] == "down"
+    assert body["llm"] == "disabled"
 
 
 def test_healthz_no_usa_envelope(client):

@@ -36,6 +36,7 @@ from app.services.tickets import (
 pytestmark = pytest.mark.integration
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+PDF = b"%PDF-1.7\n" + b"\x00" * 16
 
 
 def _correo() -> str:
@@ -409,6 +410,20 @@ async def test_encuesta_ticket_inexistente(sesion) -> None:
 
 
 # --- Adjuntos: staging → ticket y purga ---
+
+
+async def test_varios_adjuntos_staging_a_ticket(sesion) -> None:
+    pdfs = [
+        await subir_adjunto(sesion, filename=f"doc{i}.pdf", content=PDF) for i in range(2)
+    ]
+    fotos = [
+        await subir_adjunto(sesion, filename=f"foto{i}.png", content=PNG) for i in range(3)
+    ]
+    ids = [fila.id for fila in pdfs + fotos]
+    ticket = await _registrar(sesion, adjunto_ids=ids)
+    assert len(ticket.adjuntos) == 5
+    nombres = {adj.nombre_original for adj in ticket.adjuntos}
+    assert nombres == {"doc0.pdf", "doc1.pdf", "foto0.png", "foto1.png", "foto2.png"}
 
 
 async def test_adjunto_staging_a_ticket(sesion) -> None:

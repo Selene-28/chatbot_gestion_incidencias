@@ -52,7 +52,7 @@ sequenceDiagram
     U->>B: descripción (10–2000 chars, si no → re-solicita)
     B->>U: Prioridad sugerida (botones Baja/Media/Alta, default Media)
     U->>B: prioridad
-    B->>U: "¿Deseas adjuntar evidencia?" (opcional, JPG/PNG/PDF ≤5MB)
+    B->>U: "¿Deseas adjuntar evidencia?" (hasta 8 archivos, JPG/PNG/PDF ≤15MB c/u)
     U->>B: adjunto o "omitir"
     B->>U: Resumen de datos + botones Confirmar / Corregir / Cancelar
     U->>B: Confirmar

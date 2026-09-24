@@ -45,7 +45,14 @@ class LlmNoDisponible(Exception):
 
 
 def _hay_key() -> bool:
-    return bool(get_settings().ANTHROPIC_API_KEY)
+    """True solo con una key real de Anthropic (sk-ant-…).
+
+    El placeholder ``cambiar`` del ``.env.example`` no cuenta: si se tratara
+    como configurada, /healthz diría ``configured`` y cada llamada a Claude
+    fallaría (401), en lugar del modo degradado correcto (solo Capa 1 + RAG).
+    """
+    key = (get_settings().ANTHROPIC_API_KEY or "").strip()
+    return key.startswith("sk-ant-")
 
 
 def _breaker_abierto() -> bool:
